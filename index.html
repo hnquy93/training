@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0F1115">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
@@ -18,8 +18,9 @@
 <style>
   :root{--ink:#0F1115;--surface:#171A21;--surface-2:#1C2029;--line:#282E3A;--text:#F5F6F8;--muted:#8B92A0;--volt:#FFDE59;--volt-dim:#39330f;--done:#4ADE80;--done-dim:#153a26;--blue:#5EC8FF;--pink:#FF8FA3}
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%}
-  body{background:var(--ink);color:var(--text);font-family:'Inter',system-ui,sans-serif;line-height:1.5;padding:20px 14px 96px;min-height:100vh}
+  html{-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-touch-callout:none;overscroll-behavior:none}
+  body{background:var(--ink);color:var(--text);font-family:'Inter',system-ui,sans-serif;line-height:1.5;padding:20px 14px 96px;padding-top:calc(20px + env(safe-area-inset-top));min-height:100vh;-webkit-user-select:none;user-select:none}
+  input,textarea,select{-webkit-user-select:text;user-select:text}
   .wrap{max-width:760px;margin:0 auto}
   h1,h2,h3{line-height:1.05}
   .hide{display:none!important}
@@ -29,6 +30,8 @@
   .hero h1{font-family:'Anton',sans-serif;font-size:clamp(36px,9vw,56px);text-transform:uppercase;letter-spacing:-.01em}
   .hero h1 span{-webkit-text-stroke:2px var(--volt);color:transparent}
   .hero .sub{color:var(--muted);font-size:13px;margin-top:8px;max-width:52ch}
+  .ver{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);margin-top:10px;letter-spacing:.03em}
+  .ver b{color:var(--volt)}
   .langtog{position:absolute;top:16px;right:16px;appearance:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:12px;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:7px 11px;display:flex;gap:5px;align-items:center}
   .langtog:hover{border-color:#3a4150}.langtog b{color:var(--volt)}
 
@@ -224,6 +227,7 @@
     <div class="kicker" data-i18n="kicker">Huấn luyện viên cá nhân</div>
     <h1>MY&nbsp;<span>TRAINING</span></h1>
     <p class="sub" id="heroSub" data-i18n="heroSub"></p>
+    <div class="ver" id="appVer"></div>
   </div>
 
   <!-- ONBOARDING -->
@@ -361,6 +365,7 @@
 
 <script>
 /* ===== storage ===== */
+const APP_VERSION='1.0';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -407,6 +412,7 @@ const L={
  remTitle:{vi:'Nhắc lịch tập',en:'Workout reminders'},remSub:{vi:'Xuất ra lịch điện thoại (.ics)',en:'Export to phone calendar (.ics)'},remTime:{vi:'Giờ nhắc',en:'Time'},remExport:{vi:'Tải .ics',en:'Download .ics'},remNotify:{vi:'Bật thông báo trong app',en:'Enable in-app notifications'},remOn:{vi:'Đã bật thông báo ✓',en:'Notifications on ✓'},remDenied:{vi:'Trình duyệt đã chặn thông báo.',en:'Notifications blocked by browser.'},
  protTarget:{vi:'Đạm mục tiêu',en:'Protein target'},backup:{vi:'⤓ Sao lưu',en:'⤓ Backup'},restore:{vi:'⤒ Khôi phục',en:'⤒ Restore'},restored:{vi:'Đã khôi phục dữ liệu.',en:'Data restored.'},badFile:{vi:'File không hợp lệ.',en:'Invalid file.'},editProfile:{vi:'Chỉnh hồ sơ / dụng cụ',en:'Edit profile / equipment'},
  persistTitle:{vi:'Lưu trữ bền vững',en:'Persistent storage'},persistChk:{vi:'đang kiểm tra…',en:'checking…'},persistOn:{vi:'Đã bật — iOS sẽ không tự xóa dữ liệu ✓',en:'On — iOS won’t auto-evict your data ✓'},persistOff:{vi:'Chưa bật — dùng app đều + thỉnh thoảng bấm Sao lưu để chắc chắn',en:'Not granted — use app regularly + back up now and then'}, cloudTitle:{vi:'Sao lưu đám mây',en:'Cloud backup'},cloudSub:{vi:'Qua Google Apps Script — không cần đăng nhập',en:'Via Google Apps Script — no login'},gasUrlPh:{vi:'Dán URL Apps Script (…/exec)',en:'Paste Apps Script URL (…/exec)'},gasSecretPh:{vi:'Mật khẩu bí mật (nếu có)',en:'Secret password (if any)'},gasSave:{vi:'Lưu & Kết nối',en:'Save & connect'},gasConnected:{vi:'Đã kết nối — tự sao lưu lên Drive ✓',en:'Connected — auto-backup to Drive ✓'},gasOff:{vi:'Chưa cấu hình',en:'Not set up'},gasErr:{vi:'Không kết nối được. Kiểm tra URL/mật khẩu & quyền deploy.',en:'Connection failed. Check URL/secret & deploy access.'},gasBadUrl:{vi:'URL phải là link Apps Script kết thúc bằng /exec.',en:'URL must be an Apps Script link ending in /exec.'},drivePushNow:{vi:'Đồng bộ ngay',en:'Sync now'},drivePullNow:{vi:'Khôi phục từ Drive',en:'Restore from Drive'},drivePushed:{vi:'Đã sao lưu lên Drive ✓',en:'Backed up ✓'},drivePulled:{vi:'Đã khôi phục ✓',en:'Restored ✓'},driveConfirmPull:{vi:'Khôi phục dữ liệu từ Drive? (ghi đè dữ liệu hiện có trên máy)',en:'Restore from Drive? (overwrites current local data)'},
+ verLabel:{vi:'Phiên bản',en:'Version'},updateReady:{vi:'Có bản cập nhật mới! Đang tải lại…',en:'New update available! Reloading…'},
  fuelTitle:{vi:'Dinh dưỡng',en:'Nutrition'},fuelSub:{vi:'Ước tính theo hồ sơ & mục tiêu',en:'Estimated from profile & goal'},perDay:{vi:'kcal / ngày',en:'kcal / day'},protein:{vi:'Đạm (Protein)',en:'Protein'},carb:{vi:'Tinh bột (Carb)',en:'Carbs'},fat:{vi:'Chất béo (Fat)',en:'Fat'},mealsTitle:{vi:'Gợi ý bữa ăn',en:'Meal suggestions'},
  nutNote:{vi:'Ước tính tham khảo (Mifflin-St Jeor), không phải lời khuyên y tế. Sau 2–3 tuần nếu cân nặng không đổi theo hướng mong muốn thì chỉnh ±200 kcal.',en:'Reference estimate (Mifflin-St Jeor), not medical advice. After 2–3 weeks, adjust by ±200 kcal if weight isn’t moving as intended.'},
  goalBulkRow:{vi:t=>`Thặng dư nhẹ để lên cơ (TDEE ${t} + 350)`,en:t=>`Slight surplus to build (TDEE ${t} + 350)`},goalCutRow:{vi:t=>`Thâm hụt để giảm mỡ (TDEE ${t} − 500)`,en:t=>`Deficit to lose fat (TDEE ${t} − 500)`},goalMaintRow:{vi:t=>`Bằng mức tiêu hao (TDEE ${t})`,en:t=>`At maintenance (TDEE ${t})`},
@@ -822,17 +828,51 @@ document.querySelectorAll('.tab').forEach(tb=>tb.addEventListener('click',()=>go
 $('editProfile').addEventListener('click',()=>{fillOnboard();$('app').classList.add('hide');$('tabbar').classList.add('hide');$('onboard').classList.remove('hide');window.scrollTo(0,0);});
 
 /* ===== language toggle ===== */
-$('langTog').addEventListener('click',()=>{lang=lang==='vi'?'en':'vi';store.set('sp_lang',lang);applyStatic();if(profile&&!$('app').classList.contains('hide'))renderAll();});
+$('langTog').addEventListener('click',()=>{lang=lang==='vi'?'en':'vi';store.set('sp_lang',lang);applyStatic();showVer();if(profile&&!$('app').classList.contains('hide'))renderAll();});
 
 /* ===== init ===== */
+/* ===== version display ===== */
+function showVer(){$('appVer').innerHTML=`${t('verLabel')}: <b>v${APP_VERSION}</b>`;}
+
+/* ===== lock zoom (iOS ignores user-scalable=no since iOS 10) ===== */
+document.addEventListener('gesturestart',function(e){e.preventDefault();},{passive:false});
+document.addEventListener('gesturechange',function(e){e.preventDefault();},{passive:false});
+document.addEventListener('gestureend',function(e){e.preventDefault();},{passive:false});
+let lastTouchEnd=0;
+document.addEventListener('touchend',function(e){const now=Date.now();if(now-lastTouchEnd<300){e.preventDefault();}lastTouchEnd=now;},{passive:false});
+
+/* ===== auto-update: check version.json on startup ===== */
+async function checkUpdate(){try{
+  const r=await fetch('./version.json?_='+Date.now(),{cache:'no-store'});if(!r.ok)return;
+  const j=await r.json();
+  if(j.version&&j.version!==APP_VERSION){
+    // new version deployed — clear SW cache and reload
+    if('caches' in window){const keys=await caches.keys();for(const k of keys)await caches.delete(k);}
+    if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration){const reg=await navigator.serviceWorker.getRegistration();if(reg)await reg.update();}
+    $('appVer').innerHTML=`<b style="color:var(--done)">${t('updateReady')}</b>`;
+    setTimeout(()=>location.reload(true),1500);
+  }}catch(e){/* version.json not found = OK, skip */}}
+
 /* ===== persistent storage ===== */
 async function requestPersist(){try{if(navigator.storage&&navigator.storage.persist){let p=navigator.storage.persisted?await navigator.storage.persisted():false;if(!p)p=await navigator.storage.persist();return !!p;}}catch{}return false;}
 function updatePersistUI(){const el=$('persistStat');if(!el)return;const msg=persistGranted===null?t('persistChk'):(persistGranted?t('persistOn'):t('persistOff'));el.textContent=t('persistTitle')+': '+msg;el.style.color=persistGranted?'var(--done)':'var(--muted)';}
 
-load();applyStatic();
+load();applyStatic();showVer();
 requestPersist().then(p=>{persistGranted=p;updatePersistUI();});
-driveStartup();
+driveStartup();checkUpdate();
 if(profile){fillOnboard();startApp();}else{sel.equip=new Set(PRESETS.gym);paintEquip();paintPreset();}
+
+/* ===== auto-update: reload when new SW activates ===== */
+if('serviceWorker'in navigator){
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(refreshing)return;refreshing=true;location.reload();});
+  navigator.serviceWorker.ready.then(reg=>{
+    // check for update every 30 min while app is open
+    setInterval(()=>{reg.update().catch(()=>{});},1800000);
+    // also check immediately on focus (user returns to app)
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)reg.update().catch(()=>{});});
+  });
+}
 </script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js").catch(function(){});});}</script>
 </body>

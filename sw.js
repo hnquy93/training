@@ -1,5 +1,5 @@
-/* MY TRAINING service worker — offline app shell + exercise-image cache */
-const CACHE = 'mytraining-v3';
+/* MY TRAINING service worker v4 — offline shell + auto-update */
+const CACHE = 'mytraining-v4';
 const SHELL = ['./','./index.html','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png','./icon-512-maskable.png'];
 
 self.addEventListener('install', e => {
@@ -10,17 +10,22 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET') return;                 // POST to Apps Script: leave to network
+  if (req.method !== 'GET') return;
   const url = new URL(req.url), host = url.hostname;
-  // Never cache Apps Script / Google endpoints.
+  // Never cache Google/Apps Script calls
   if (host === 'script.google.com' || host.endsWith('.googleusercontent.com') ||
-      host === 'accounts.google.com' || host === 'apis.google.com' ||
+      host === 'accounts.google.com' || host === 'apis.google.com' || host === 'www.google.com' ||
       (host.endsWith('googleapis.com') && host !== 'fonts.googleapis.com')) return;
-  // App shell (same origin): cache-first, offline fallback to index.html.
+  // version.json: always network-first (critical for auto-update)
+  if (url.pathname.endsWith('version.json')) {
+    e.respondWith(fetch(req).catch(() => caches.match(req)));
+    return;
+  }
+  // App shell (same origin): cache-first, offline fallback
   if (url.origin === location.origin) {
     e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put(req, cp)); return res; }).catch(() => caches.match('./index.html'))));
     return;
   }
-  // Exercise images + fonts: cache after first load.
+  // Exercise images + fonts: cache after first load
   e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put(req, cp)); return res; }).catch(() => r)));
 });
