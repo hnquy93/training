@@ -123,8 +123,8 @@
   .setrow.done.drop .setno{background:rgba(255,143,163,.2);color:var(--pink)}
   .setrow.done .setdone{background:var(--done);border-color:var(--done)}
   .setrow.done .setdone svg{stroke:#08210f}
-  .setcancel{appearance:none;cursor:pointer;background:none;border:none;color:var(--muted);font-size:15px;padding:4px 5px;line-height:1;border-radius:6px;transition:.15s;flex-shrink:0;opacity:.5}
-  .setcancel:hover,.setcancel:active{opacity:1;color:var(--pink);background:rgba(255,143,163,.1)}
+  .setcancel{width:34px;height:34px;flex-shrink:0;border-radius:8px;border:2px solid #3a4150;background:var(--surface-2);cursor:pointer;display:grid;place-items:center;transition:.15s;appearance:none;font-size:16px;color:var(--muted);line-height:1;padding:0}
+  .setcancel:active{background:rgba(255,143,163,.15);border-color:var(--pink);color:var(--pink)}
   .exnote{margin-top:8px;width:100%;font-family:inherit;font-size:13px;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;min-height:38px}
   .setfoot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:9px}
   .orm{font-size:11px;color:var(--muted);margin-left:auto}.orm b{color:var(--text);font-family:'JetBrains Mono',monospace}
@@ -608,7 +608,7 @@ function setRowHTML(s,si){return `<div class="setrow${s.done?' done':''}${s.drop
   <div class="wr"><input class="sw" inputmode="decimal" placeholder="kg" value="${s.w??''}"><u>kg</u></div><span class="mul">×</span>
   <div class="wr"><input class="sr" inputmode="numeric" placeholder="rep" value="${s.r??''}"><u>rep</u></div>
   <input class="rpe" inputmode="decimal" placeholder="@" title="RPE" value="${s.rpe??''}">
-  <button class="setdone">${chk}</button><button class="setcancel" title="Xóa set">✕</button></div>`;}
+  <button class="setdone">${chk}</button><button class="setcancel" title="Xóa set"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6"/></svg></button></div>`;}
 function updateRing(i){const r=document.querySelector(`[data-ring="${i}"]`);if(!r)return;const card=r.closest('.day');
   const tot=card.querySelectorAll('.ex').length,c=card.querySelectorAll('.ex.done').length;
   r.style.setProperty('--p',tot?Math.round(c/tot*100):0);r.classList.toggle('full',c===tot&&tot>0);r.querySelector('b').textContent=`${c}/${tot}`;}
