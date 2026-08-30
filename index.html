@@ -70,7 +70,7 @@
   .banner{border:1px solid rgba(255,222,89,.4);background:rgba(255,222,89,.08);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .banner b{color:var(--volt)}
 
-  .day{border:1px solid var(--line);border-radius:15px;background:var(--surface);overflow:hidden;margin-bottom:12px;content-visibility:auto;contain-intrinsic-size:auto 520px}
+  .day{border:1px solid var(--line);border-radius:15px;background:var(--surface);overflow:hidden;margin-bottom:12px}
   .day.rest{opacity:.55}
   .day-top{display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid var(--line)}
   .day.rest .day-top{border-bottom:none}
@@ -450,7 +450,9 @@ const POOL={
 const SLOTG={chest_c:'chest',chest_i:'chest',back_c:'back',back_i:'back',quad_c:'legs',ham:'legs',leg_i:'legs',calf:'legs',sh_c:'sh',sh_i:'sh',bi:'bi',tri:'tri'};
 const SLOTK={chest_c:'c',chest_i:'i',back_c:'c',back_i:'i',quad_c:'c',ham:'c',leg_i:'i',calf:'i',sh_c:'c',sh_i:'i',bi:'i',tri:'i'};
 const GNAME={chest:{vi:'Ngực',en:'Chest'},back:{vi:'Lưng',en:'Back'},legs:{vi:'Chân',en:'Legs'},sh:{vi:'Vai',en:'Shoulders'},bi:{vi:'Tay trước',en:'Biceps'},tri:{vi:'Tay sau',en:'Triceps'}};
-const gName=g=>GNAME[g][lang];
+const gName=g=>GNAME[g]?GNAME[g][lang]:g;
+const FOCUS={upper:{vi:'Thân trên',en:'Upper'},lower:{vi:'Thân dưới',en:'Lower'},full:{vi:'Toàn thân',en:'Full body'},push:{vi:'Đẩy (ngực/vai/tay sau)',en:'Push'},pull:{vi:'Kéo (lưng/tay trước)',en:'Pull'},legs:{vi:'Chân',en:'Legs'},chest:{vi:'Ngực',en:'Chest'},back:{vi:'Lưng',en:'Back'},sh:{vi:'Vai',en:'Shoulders'},bi:{vi:'Tay trước',en:'Biceps'},tri:{vi:'Tay sau',en:'Triceps'},arms:{vi:'Tay',en:'Arms'}};
+const focusName=f=>(FOCUS[f]&&FOCUS[f][lang])||(GNAME[f]&&GNAME[f][lang])||f;
 const EQLABEL={bb:'eqBb',db:'eqDb',mc:'eqMc',band:'eqBand',bar:'eqBar',bw:'eqBw'};
 const eqLabel=eq=>t(EQLABEL[eq]);
 const EXBY={};for(const s in POOL)POOL[s].forEach(e=>EXBY[e.id]={...e,slot:s,g:SLOTG[s],k:SLOTK[s]});
@@ -590,7 +592,7 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
             <button class="minibtn" data-rest="${restSec(ex.k)}"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 13V9M9 2h6"/></svg>${restSec(ex.k)}s</button>
             ${o?`<span class="orm">1RM ~ <b>${o}kg</b></span>`:''}
           </div></div></div>`;});
-    card.innerHTML=`<div class="day-top"><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${gName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div></div>${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div>`;
+    card.innerHTML=`<div class="day-top"><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div></div>${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div>`;
     g.appendChild(card);updateRing(i);});
 }
 function dayName(i){return t('daysWk')&&(lang==='vi'?['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','CN']:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])[i];}
