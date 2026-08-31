@@ -85,11 +85,11 @@
   .donesummary{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
   .done-readonly{cursor:default!important;border-color:transparent!important;background:transparent!important}
   .done-readonly:active{border-color:transparent!important;background:transparent!important}
-  .day.completed .ex{padding:8px 15px;border-bottom:1px solid var(--line)}
-  .day.completed .ex:last-child{border-bottom:none}
-  .day.completed .sets{gap:4px}
-  .day.completed .setrow{gap:4px}
-  .day.completed .setno{width:18px;height:18px;font-size:10px}
+  .day.completed .day-content .ex{padding:8px 15px;border-bottom:1px solid var(--line)}
+  .day.completed .day-content .ex:last-child{border-bottom:none}
+  .day.completed .day-content .sets{gap:4px}
+  .day.completed .day-content .setrow{gap:4px}
+  .day.completed .day-content .setno{width:18px;height:18px;font-size:10px}
   .chevron{width:20px;height:20px;flex-shrink:0;color:var(--muted);transition:transform .2s}
   .day.collapsed .chevron{transform:rotate(-90deg)}
   .daynum{font-family:'Anton',sans-serif;font-size:26px;color:var(--volt);min-width:30px}
@@ -412,7 +412,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='1.4';
+const APP_VERSION='1.5';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -668,9 +668,10 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
         return `<div class="ex done" style="pointer-events:none"><div class="exbody" style="width:100%">
           <div class="exhead"><div class="exname" style="text-decoration:none;color:var(--text)">${exName(it.id)}</div></div>
           <div class="sets">${setsStr}</div>${it.note?`<div class="prevperf" style="margin-top:4px">"${it.note}"</div>`:''}</div></div>`;}).join('');
-      card.className='day completed';
-      card.innerHTML=`<div class="day-top"><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
-        <div class="donesummary">${ds.setCount} set · ${ds.volume.toLocaleString()} kg${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span></div>${doneRows}`;
+      card.className='day completed collapsed';
+      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
+        <div class="donesummary">${ds.setCount} set · ${ds.volume.toLocaleString()} kg${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span>${chevronSVG}</div>
+        <div class="day-content">${doneRows}</div>`;
     } else {
       card.className='day'+(collapsed?' collapsed':'');
       card.innerHTML=`<div class="day-top"${collapsed?' data-toggle':''}><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div>${collapsed?chevronSVG:''}</div>
