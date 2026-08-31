@@ -85,8 +85,8 @@
   .donesummary{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
   .done-readonly{cursor:default!important;border-color:transparent!important;background:transparent!important}
   .done-readonly:active{border-color:transparent!important;background:transparent!important}
-  .day.completed .day-content .ex{padding:8px 15px;border-bottom:1px solid var(--line)}
-  .day.completed .day-content .ex:last-child{border-bottom:none}
+  .day.completed .day-content .ex{opacity:.75}
+  .day.completed .day-content .ex .exname{text-decoration:none}
   .day.completed .day-content .sets{gap:4px}
   .day.completed .day-content .setrow{gap:4px}
   .day.completed .day-content .setno{width:18px;height:18px;font-size:10px}
@@ -412,7 +412,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='1.5';
+const APP_VERSION='1.6';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -612,7 +612,16 @@ function renderDeload(){$('deloadBtn').textContent=deloadOn?t('deloadOn'):t('del
 $('deloadBtn').addEventListener('click',()=>{deloadOn=!deloadOn;store.set('sp_deload',deloadOn?'1':'0');setState={};renderDeload();renderWeek();renderStats();});
 
 /* ===== progression ===== */
-function suggest(id){const ex=EXBY[id],[lo,hi]=range(ex.k),lg=logs[id];
+function suggest(id){const ex=EXBY[id],[lo,hi]=range(ex.k);
+  let lg=logs[id];
+  // if no log, check history for this exercise's best set
+  if(!lg||lg.w==null){for(let i=history.length-1;i>=0;i--){const it=history[i].items.find(x=>x.id===id);
+    if(it&&it.sets.length){const top=it.sets.reduce((a,s)=>(+s.w||0)>(+a.w||0)?s:a,it.sets[0]);lg={w:top.w,r:top.r,date:history[i].ts};break;}}}
+  // still nothing? estimate from same-slot exercise that has been logged
+  if(!lg||lg.w==null){const slot=ex.slot;const siblings=POOL[slot].filter(s=>s.id!==id);
+    for(const sib of siblings){const slg=logs[sib.id];if(slg&&slg.w){lg={w:slg.w,r:lo};break;}
+      for(let i=history.length-1;i>=0;i--){const it=history[i].items.find(x=>x.id===sib.id);
+        if(it&&it.sets.length){const top=it.sets.reduce((a,s)=>(+s.w||0)>(+a.w||0)?s:a,it.sets[0]);lg={w:top.w,r:lo};break;}}if(lg&&lg.w)break;}}
   if(!lg||(lg.w==null&&lg.r==null))return{w:null,r:lo,txt:t('sgFirst',lo),tag:t('tgFirst')};
   if(deloadOn){const w=lg.w?Math.round(lg.w*0.9/2.5)*2.5:null;return{w,r:lo,txt:w?`${fmt(w)}kg × ${lo}`:`${lo} rep`,tag:t('tgDeload')};}
   if(ex.bw&&!lg.w){const nr=lg.r+(lg.r>=hi?2:1);return{w:null,r:nr,txt:`${nr} rep`,tag:lg.r>=hi?t('tgAddRep'):t('tgPlusRep')};}
@@ -639,7 +648,10 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
     const collapsed=!isNext;
     const exs=genDay(day.key);let rows='';
     exs.forEach(ex=>{const[lo,hi]=range(ex.k),tset=setsFor(ex.k),sg=suggest(ex.id),o=orm(ex.id),skey=i+':'+ex.id,ss=superLinks.has(ex.ovKey);
-      if(!setState[skey])setState[skey]=Array.from({length:tset},()=>({w:sg.w??'',r:sg.r,rpe:'',done:false}));
+      if(!setState[skey]||setState[skey].every(s=>!s.done)){
+        const sg2=suggest(ex.id),tset2=setsFor(ex.k);
+        setState[skey]=Array.from({length:tset2},()=>({w:sg2.w??'',r:sg2.r,rpe:'',done:false}));
+      }
       const st=setState[skey],on=st.length>0&&st.every(s=>s.done),lp=lastPerf(ex.id),note=exNotes[skey]||'';
       const setsHTML=st.map((s,si)=>setRowHTML(s,si)).join('');
       rows+=`<div class="ex${on?' done':''}${ss?' ss':''}" data-d="${i}" data-id="${ex.id}" data-ov="${ex.ovKey}" data-slot="${ex.slot}" data-skey="${skey}">
@@ -663,11 +675,17 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
     const chevronSVG='<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
     if(doneSession){
       const ds=doneSession;
-      const doneRows=ds.items.map(it=>{const ex=EXBY[it.id];
-        const setsStr=it.sets.map((s,si)=>`<div class="setrow done" data-si="${si}"><span class="setno">${si+1}</span><div class="setvals done-readonly"><span class="sv-w">${s.w?fmt(s.w):'–'}<u>kg</u></span><span class="mul">×</span><span class="sv-r">${s.r}<u>rep</u></span>${s.rpe?`<span class="sv-rpe">@${s.rpe}</span>`:''}</div></div>`).join('');
-        return `<div class="ex done" style="pointer-events:none"><div class="exbody" style="width:100%">
-          <div class="exhead"><div class="exname" style="text-decoration:none;color:var(--text)">${exName(it.id)}</div></div>
-          <div class="sets">${setsStr}</div>${it.note?`<div class="prevperf" style="margin-top:4px">"${it.note}"</div>`:''}</div></div>`;}).join('');
+      const doneRows=ds.items.map(it=>{const ex=EXBY[it.id];if(!ex)return '';
+        const setsStr=it.sets.map((s,si)=>`<div class="setrow done" data-si="${si}"><span class="setno">${si+1}</span>
+          <div class="setvals done-readonly"><span class="sv-w">${s.w?fmt(s.w):'–'}<u>kg</u></span><span class="mul">×</span><span class="sv-r">${s.r}<u>rep</u></span>${s.rpe?`<span class="sv-rpe">@${s.rpe}</span>`:''}</div></div>`).join('');
+        return `<div class="ex done" data-id="${it.id}">
+          ${gifHTML(ex.img,`data-open="${it.id}"`)}
+          <div class="exbody">
+            <div class="exhead"><div class="exname" style="text-decoration:none">${exName(it.id)}</div></div>
+            <div class="exmeta"><span class="pill target">${it.sets.length} set</span><span class="pill eq">${eqLabel(ex.eq)}</span></div>
+            <div class="sets">${setsStr}</div>
+            ${it.note?`<div class="prevperf" style="margin-top:6px">"${it.note}"</div>`:''}
+          </div></div>`;}).join('');
       card.className='day completed collapsed';
       card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
         <div class="donesummary">${ds.setCount} set · ${ds.volume.toLocaleString()} kg${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span>${chevronSVG}</div>
