@@ -76,6 +76,11 @@
   .day.rest .day-top{border-bottom:none}
   .donebadge{font-size:11px;font-weight:700;color:var(--done);background:var(--done-dim);padding:3px 9px;border-radius:7px;white-space:nowrap}
   .donesummary{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
+  .day-done-detail{padding:6px 15px 10px;border-top:1px solid var(--line)}
+  .day-done-detail .hex{display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:12.5px;border-bottom:1px dashed rgba(40,46,58,.5)}
+  .day-done-detail .hex:last-child{border-bottom:none}
+  .day-done-detail .hn{color:var(--text);font-weight:500}
+  .day-done-detail .hv{font-family:'JetBrains Mono',monospace;color:var(--muted);text-align:right;font-size:12px}
   .chevron{width:20px;height:20px;flex-shrink:0;color:var(--muted);transition:transform .2s}
   .day.collapsed .chevron{transform:rotate(-90deg)}
   .daynum{font-family:'Anton',sans-serif;font-size:26px;color:var(--volt);min-width:30px}
@@ -222,21 +227,22 @@
 
   /* scroll picker */
   .picker-overlay{position:fixed;inset:0;z-index:120;background:rgba(8,9,12,.7);display:flex;align-items:flex-end;justify-content:center}
-  .picker-sheet{background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:420px;padding:0 0 calc(16px + env(safe-area-inset-bottom));animation:slideUp .2s ease-out}
-  @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .picker-overlay.hide{display:none!important}
+  .picker-sheet{background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:420px;padding-bottom:calc(16px + env(safe-area-inset-bottom));overflow:hidden}
   .picker-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
   .picker-head .ph-title{font-weight:700;font-size:15px}
   .picker-head button{appearance:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;color:var(--volt);background:none;border:none;padding:6px 10px}
-  .picker-cols{display:flex;gap:0;height:220px;position:relative;overflow:hidden}
-  .picker-cols::before,.picker-cols::after{content:'';position:absolute;left:0;right:0;z-index:2;pointer-events:none}
-  .picker-cols::before{top:0;height:88px;background:linear-gradient(var(--surface),transparent)}
-  .picker-cols::after{bottom:0;height:88px;background:linear-gradient(transparent,var(--surface))}
-  .picker-col{flex:1;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;padding:88px 0;position:relative}
-  .picker-col::-webkit-scrollbar{display:none}
-  .picker-col .po{height:44px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--muted);transition:color .15s,transform .15s}
-  .picker-col .po.sel{color:var(--text);transform:scale(1.15)}
-  .picker-sel{position:absolute;left:8px;right:8px;top:88px;height:44px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);pointer-events:none;z-index:1}
-  .picker-label{text-align:center;font-size:11px;color:var(--muted);font-weight:700;padding:10px 0 4px;letter-spacing:.1em;text-transform:uppercase}
+  .picker-row{display:flex;height:220px;position:relative;overflow:hidden}
+  .picker-row::before,.picker-row::after{content:'';position:absolute;left:0;right:0;z-index:3;pointer-events:none}
+  .picker-row::before{top:0;height:88px;background:linear-gradient(var(--surface) 20%,transparent)}
+  .picker-row::after{bottom:0;height:88px;background:linear-gradient(transparent,var(--surface) 80%)}
+  .pk-wrap{flex:1;position:relative;height:100%;overflow:hidden}
+  .pk-sel{position:absolute;left:6px;right:6px;top:50%;transform:translateY(-50%);height:44px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);pointer-events:none;z-index:1}
+  .pk-scroll{position:absolute;inset:0;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;z-index:2}
+  .pk-scroll::-webkit-scrollbar{display:none}
+  .pk-pad{height:88px;flex-shrink:0}
+  .pk-item{height:44px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--muted)}
+  .pk-label{text-align:center;font-size:10px;color:var(--muted);font-weight:700;padding:10px 0 0;letter-spacing:.15em;text-transform:uppercase}
 
   @media(max-width:480px){body{padding:16px 11px 96px}.gif{width:64px;height:64px}.macros{gap:7px}.macro{padding:10px}}
 </style>
@@ -376,10 +382,11 @@
 
 <div class="picker-overlay hide" id="picker"><div class="picker-sheet">
   <div class="picker-head"><button id="pkCancel">✕</button><span class="ph-title" id="pkTitle">Set</span><button id="pkDone">OK</button></div>
-  <div style="display:flex">
-    <div style="flex:1"><div class="picker-label">KG</div><div style="position:relative"><div class="picker-sel"></div><div class="picker-col" id="pkW"></div></div></div>
-    <div style="flex:1"><div class="picker-label">REP</div><div style="position:relative"><div class="picker-sel"></div><div class="picker-col" id="pkR"></div></div></div>
-    <div style="flex:1"><div class="picker-label">RPE</div><div style="position:relative"><div class="picker-sel"></div><div class="picker-col" id="pkRpe"></div></div></div>
+  <div style="display:flex;padding:0 10px"><div class="pk-label" style="flex:1">KG</div><div class="pk-label" style="flex:1">REP</div><div class="pk-label" style="flex:1">RPE</div></div>
+  <div class="picker-row">
+    <div class="pk-wrap"><div class="pk-sel"></div><div class="pk-scroll" id="pkW"></div></div>
+    <div class="pk-wrap"><div class="pk-sel"></div><div class="pk-scroll" id="pkR"></div></div>
+    <div class="pk-wrap"><div class="pk-sel"></div><div class="pk-scroll" id="pkRpe"></div></div>
   </div>
 </div></div>
 
@@ -396,7 +403,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='1.2';
+const APP_VERSION='1.3';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -644,9 +651,11 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
     const chevronSVG='<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
     if(doneSession){
       const ds=doneSession;
+      const exSummary=ds.items.map(it=>`<div class="hex"><span class="hn">${exName(it.id)}</span><span class="hv">${it.sets.map(x=>`${x.w?fmt(x.w)+'×':''}${x.r}`).join(', ')}</span></div>`).join('');
       card.className='day completed collapsed';
       card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
         <div class="donesummary">${ds.setCount} set · ${ds.volume.toLocaleString()} kg${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span>${chevronSVG}</div>
+        <div class="day-done-detail">${exSummary}</div>
         <div class="day-content">${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
     } else {
       card.className='day'+(collapsed?' collapsed':'');
@@ -706,29 +715,23 @@ for(let w=0;w<=200;w+=2.5)PK_WEIGHTS.push(w);
 for(let r=1;r<=50;r++)PK_REPS.push(r);
 for(let p=6;p<=10;p+=0.5)PK_RPE.push(p);
 let pkCtx=null;
-function fillCol(el,vals,sel){el.innerHTML=vals.map((v,i)=>`<div class="po" data-i="${i}">${v===''?'–':v}</div>`).join('');
-  const idx=vals.indexOf(sel);scrollToIdx(el,idx>=0?idx:0);}
-function scrollToIdx(el,idx){el.scrollTop=idx*44;}
+function fillCol(el,vals,selVal){
+  el.innerHTML='<div class="pk-pad"></div>'+vals.map((v,i)=>`<div class="pk-item" data-i="${i}">${v===''?'–':v}</div>`).join('')+'<div class="pk-pad"></div>';
+  const idx=vals.indexOf(selVal);el.scrollTop=(idx>=0?idx:0)*44;}
 function readCol(el,vals){const idx=Math.round(el.scrollTop/44);return vals[Math.max(0,Math.min(idx,vals.length-1))];}
-function highlightCol(el){const idx=Math.round(el.scrollTop/44);el.querySelectorAll('.po').forEach((p,i)=>{p.classList.toggle('sel',i===idx);});}
 function openPicker(exEl,row){
   const st=setState[exEl.dataset.skey],si=+row.dataset.si,s=st[si];
-  captureSets(exEl);
   const w=s.w===''||s.w==null?0:+s.w,r=s.r||6,rpe=s.rpe||'';
-  // find closest weight
   let wIdx=0,minD=999;PK_WEIGHTS.forEach((v,i)=>{if(Math.abs(v-w)<minD){minD=Math.abs(v-w);wIdx=i;}});
   $('pkTitle').textContent=t('setN',si+1);
   fillCol($('pkW'),PK_WEIGHTS,PK_WEIGHTS[wIdx]);
   fillCol($('pkR'),PK_REPS,r);
   fillCol($('pkRpe'),PK_RPE,rpe===''?'':+rpe);
-  pkCtx={exEl,si};
-  $('picker').classList.remove('hide');
-  // scroll after visible
-  setTimeout(()=>{scrollToIdx($('pkW'),wIdx);scrollToIdx($('pkR'),PK_REPS.indexOf(r)>=0?PK_REPS.indexOf(r):5);
-    const ri=PK_RPE.indexOf(rpe===''?'':+rpe);scrollToIdx($('pkRpe'),ri>=0?ri:0);
-    highlightCol($('pkW'));highlightCol($('pkR'));highlightCol($('pkRpe'));},50);
+  pkCtx={exEl,si};$('picker').classList.remove('hide');
+  requestAnimationFrame(()=>{$('pkW').scrollTop=wIdx*44;
+    const ri=PK_REPS.indexOf(r);$('pkR').scrollTop=(ri>=0?ri:5)*44;
+    const rpi=PK_RPE.indexOf(rpe===''?'':+rpe);$('pkRpe').scrollTop=(rpi>=0?rpi:0)*44;});
 }
-['pkW','pkR','pkRpe'].forEach(id=>{$(id).addEventListener('scroll',()=>highlightCol($(id)),{passive:true});});
 $('pkDone').addEventListener('click',()=>{if(!pkCtx)return;
   const st=setState[pkCtx.exEl.dataset.skey],si=pkCtx.si;
   st[si].w=readCol($('pkW'),PK_WEIGHTS);st[si].r=readCol($('pkR'),PK_REPS);
