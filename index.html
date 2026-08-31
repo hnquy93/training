@@ -83,11 +83,13 @@
   .day.rest .day-top{border-bottom:none}
   .donebadge{font-size:11px;font-weight:700;color:var(--done);background:var(--done-dim);padding:3px 9px;border-radius:7px;white-space:nowrap}
   .donesummary{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
-  .day-done-detail{padding:6px 15px 10px;border-top:1px solid var(--line)}
-  .day-done-detail .hex{display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:12.5px;border-bottom:1px dashed rgba(40,46,58,.5)}
-  .day-done-detail .hex:last-child{border-bottom:none}
-  .day-done-detail .hn{color:var(--text);font-weight:500}
-  .day-done-detail .hv{font-family:'JetBrains Mono',monospace;color:var(--muted);text-align:right;font-size:12px}
+  .done-readonly{cursor:default!important;border-color:transparent!important;background:transparent!important}
+  .done-readonly:active{border-color:transparent!important;background:transparent!important}
+  .day.completed .ex{padding:8px 15px;border-bottom:1px solid var(--line)}
+  .day.completed .ex:last-child{border-bottom:none}
+  .day.completed .sets{gap:4px}
+  .day.completed .setrow{gap:4px}
+  .day.completed .setno{width:18px;height:18px;font-size:10px}
   .chevron{width:20px;height:20px;flex-shrink:0;color:var(--muted);transition:transform .2s}
   .day.collapsed .chevron{transform:rotate(-90deg)}
   .daynum{font-family:'Anton',sans-serif;font-size:26px;color:var(--volt);min-width:30px}
@@ -410,7 +412,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='1.3';
+const APP_VERSION='1.4';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -624,13 +626,16 @@ function lastPerf(id){for(let i=history.length-1;i>=0;i--){const it=(history[i].
 /* ===== render week ===== */
 function thisWeekDone(){
   const now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);
-  const done={};history.filter(s=>s.ts>=mon.getTime()).forEach(s=>{done[s.key]=s;});return done;}
+  const done={};history.filter(s=>s.ts>=mon.getTime()).forEach(s=>{
+    const d=new Date(s.ts),dayIdx=(d.getDay()+6)%7;// 0=Mon..6=Sun
+    if(!done[dayIdx])done[dayIdx]=s;// keep first session per weekday
+  });return done;}
 function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.label;
   $('planNote').textContent=`${L.goalShort[profile.goal][lang]} · ${L.lvShort[profile.level][lang]} · ${profile.days} ${t('daysWk')} · ${locLabel()}`;
   const g=$('grid');g.innerHTML='';const wkDone=thisWeekDone();let nextFound=false;
   pack.days.forEach((day,i)=>{const card=document.createElement('div');card.className='day'+(day?'':' rest');
     if(!day){card.innerHTML=`<div class="day-top"><div class="daynum">•</div><div class="dmeta"><div class="dname" style="color:var(--muted)">${dayName(i)}</div></div></div>`;g.appendChild(card);return;}
-    const doneSession=wkDone[day.key];const isNext=!doneSession&&!nextFound;if(isNext)nextFound=true;
+    const doneSession=wkDone[i];const isNext=!doneSession&&!nextFound;if(isNext)nextFound=true;
     const collapsed=!isNext;
     const exs=genDay(day.key);let rows='';
     exs.forEach(ex=>{const[lo,hi]=range(ex.k),tset=setsFor(ex.k),sg=suggest(ex.id),o=orm(ex.id),skey=i+':'+ex.id,ss=superLinks.has(ex.ovKey);
@@ -658,12 +663,14 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
     const chevronSVG='<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
     if(doneSession){
       const ds=doneSession;
-      const exSummary=ds.items.map(it=>`<div class="hex"><span class="hn">${exName(it.id)}</span><span class="hv">${it.sets.map(x=>`${x.w?fmt(x.w)+'×':''}${x.r}`).join(', ')}</span></div>`).join('');
-      card.className='day completed collapsed';
-      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
-        <div class="donesummary">${ds.setCount} set · ${ds.volume.toLocaleString()} kg${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span>${chevronSVG}</div>
-        <div class="day-done-detail">${exSummary}</div>
-        <div class="day-content">${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
+      const doneRows=ds.items.map(it=>{const ex=EXBY[it.id];
+        const setsStr=it.sets.map((s,si)=>`<div class="setrow done" data-si="${si}"><span class="setno">${si+1}</span><div class="setvals done-readonly"><span class="sv-w">${s.w?fmt(s.w):'–'}<u>kg</u></span><span class="mul">×</span><span class="sv-r">${s.r}<u>rep</u></span>${s.rpe?`<span class="sv-rpe">@${s.rpe}</span>`:''}</div></div>`).join('');
+        return `<div class="ex done" style="pointer-events:none"><div class="exbody" style="width:100%">
+          <div class="exhead"><div class="exname" style="text-decoration:none;color:var(--text)">${exName(it.id)}</div></div>
+          <div class="sets">${setsStr}</div>${it.note?`<div class="prevperf" style="margin-top:4px">"${it.note}"</div>`:''}</div></div>`;}).join('');
+      card.className='day completed';
+      card.innerHTML=`<div class="day-top"><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
+        <div class="donesummary">${ds.setCount} set · ${ds.volume.toLocaleString()} kg${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span></div>${doneRows}`;
     } else {
       card.className='day'+(collapsed?' collapsed':'');
       card.innerHTML=`<div class="day-top"${collapsed?' data-toggle':''}><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div>${collapsed?chevronSVG:''}</div>
