@@ -75,8 +75,16 @@
 
   .day{border:1px solid var(--line);border-radius:15px;background:var(--surface);overflow:hidden;margin-bottom:12px}
   .day.rest{opacity:.55}
+  .day.collapsed .day-content{display:none}
+  .day.collapsed .day-top{border-bottom:none;cursor:pointer}
+  .day.completed{opacity:.7}
+  .day.completed .day-top{cursor:pointer}
   .day-top{display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid var(--line)}
   .day.rest .day-top{border-bottom:none}
+  .donebadge{font-size:11px;font-weight:700;color:var(--done);background:var(--done-dim);padding:3px 9px;border-radius:7px;white-space:nowrap}
+  .donesummary{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
+  .chevron{width:20px;height:20px;flex-shrink:0;color:var(--muted);transition:transform .2s}
+  .day.collapsed .chevron{transform:rotate(-90deg)}
   .daynum{font-family:'Anton',sans-serif;font-size:26px;color:var(--volt);min-width:30px}
   .day.rest .daynum{color:var(--muted)}
   .dmeta{flex:1;min-width:0}.dname{font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.02em}.dfocus{color:var(--muted);font-size:12px;margin-top:1px}
@@ -118,11 +126,12 @@
   .setrow.drop .setno{background:rgba(255,143,163,.15);color:var(--pink)}
   .setno{width:22px;height:22px;border-radius:6px;flex-shrink:0;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--muted)}
   .setrow .mul{color:var(--muted);font-size:12px}
-  .setrow .wr{flex:1;position:relative;min-width:0}
-  .setrow input{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 20px 8px 8px;width:100%;text-align:center}
-  .setrow input.rpe{width:52px;flex:none;padding:8px 6px;text-align:center}
-  .setrow input:focus{outline:none;border-color:var(--volt)}
-  .setrow .wr u{position:absolute;right:7px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:9px;font-style:normal;pointer-events:none}
+  .setvals{flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;min-width:0;padding:6px 8px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);transition:.15s}
+  .setvals:active{border-color:var(--volt);background:var(--volt-dim)}
+  .setvals .sv-w,.setvals .sv-r{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--text)}
+  .setvals .sv-w u,.setvals .sv-r u{font-style:normal;font-size:10px;color:var(--muted);margin-left:2px;font-weight:500}
+  .setvals .sv-rpe{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue);margin-left:auto}
+  .setrow.done .setvals{opacity:.6}
   .setdone{width:34px;height:34px;flex-shrink:0;border-radius:8px;border:2px solid #3a4150;background:var(--surface-2);cursor:pointer;display:grid;place-items:center;transition:.15s}
   .setdone svg{width:15px;height:15px;stroke:var(--muted);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:.15s}
   .setrow.done input{opacity:.6}
@@ -217,6 +226,24 @@
   .rtctrl{margin-left:auto;display:flex;gap:6px}
   .rtb{appearance:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:9px 10px}
   .rtb.skip{color:#161200;background:var(--blue);border-color:var(--blue)}
+
+  /* scroll picker */
+  .picker-overlay{position:fixed;inset:0;z-index:120;background:rgba(8,9,12,.7);display:flex;align-items:flex-end;justify-content:center}
+  .picker-sheet{background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:420px;padding:0 0 calc(16px + env(safe-area-inset-bottom));animation:slideUp .2s ease-out}
+  @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .picker-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .picker-head .ph-title{font-weight:700;font-size:15px}
+  .picker-head button{appearance:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;color:var(--volt);background:none;border:none;padding:6px 10px}
+  .picker-cols{display:flex;gap:0;height:220px;position:relative;overflow:hidden}
+  .picker-cols::before,.picker-cols::after{content:'';position:absolute;left:0;right:0;z-index:2;pointer-events:none}
+  .picker-cols::before{top:0;height:88px;background:linear-gradient(var(--surface),transparent)}
+  .picker-cols::after{bottom:0;height:88px;background:linear-gradient(transparent,var(--surface))}
+  .picker-col{flex:1;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;padding:88px 0;position:relative}
+  .picker-col::-webkit-scrollbar{display:none}
+  .picker-col .po{height:44px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--muted);transition:color .15s,transform .15s}
+  .picker-col .po.sel{color:var(--text);transform:scale(1.15)}
+  .picker-sel{position:absolute;left:8px;right:8px;top:88px;height:44px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);pointer-events:none;z-index:1}
+  .picker-label{text-align:center;font-size:11px;color:var(--muted);font-weight:700;padding:10px 0 4px;letter-spacing:.1em;text-transform:uppercase}
 
   @media(max-width:480px){body{padding:16px 11px 96px}.gif{width:64px;height:64px}.macros{gap:7px}.macro{padding:10px}}
 </style>
@@ -354,6 +381,15 @@
 
 <div class="modal hide" id="summary"><div class="box"><div class="mbody" id="sumBody"></div></div></div>
 
+<div class="picker-overlay hide" id="picker"><div class="picker-sheet">
+  <div class="picker-head"><button id="pkCancel">✕</button><span class="ph-title" id="pkTitle">Set</span><button id="pkDone">OK</button></div>
+  <div style="display:flex">
+    <div style="flex:1"><div class="picker-label">KG</div><div style="position:relative"><div class="picker-sel"></div><div class="picker-col" id="pkW"></div></div></div>
+    <div style="flex:1"><div class="picker-label">REP</div><div style="position:relative"><div class="picker-sel"></div><div class="picker-col" id="pkR"></div></div></div>
+    <div style="flex:1"><div class="picker-label">RPE</div><div style="position:relative"><div class="picker-sel"></div><div class="picker-col" id="pkRpe"></div></div></div>
+  </div>
+</div></div>
+
 <div class="resttimer hide" id="rt"><div class="rtbarwrap"><i id="rtBar"></i></div>
   <div class="rtrow"><span class="rtlabel" id="rtLabel">⏱</span><b class="rttime" id="rtTime">0:00</b>
     <div class="rtctrl"><button class="rtb" id="rtMinus">−15</button><button class="rtb" id="rtPause">⏸</button><button class="rtb" id="rtPlus">+15</button><button class="rtb skip" id="rtSkip" data-i18n="rtDone">Xong</button></div></div></div>
@@ -367,7 +403,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='1.1';
+const APP_VERSION='1.2';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -415,6 +451,7 @@ const L={
  protTarget:{vi:'Đạm mục tiêu',en:'Protein target'},backup:{vi:'⤓ Sao lưu',en:'⤓ Backup'},restore:{vi:'⤒ Khôi phục',en:'⤒ Restore'},restored:{vi:'Đã khôi phục dữ liệu.',en:'Data restored.'},badFile:{vi:'File không hợp lệ.',en:'Invalid file.'},editProfile:{vi:'Chỉnh hồ sơ / dụng cụ',en:'Edit profile / equipment'},
  persistTitle:{vi:'Lưu trữ bền vững',en:'Persistent storage'},persistChk:{vi:'đang kiểm tra…',en:'checking…'},persistOn:{vi:'Đã bật — iOS sẽ không tự xóa dữ liệu ✓',en:'On — iOS won’t auto-evict your data ✓'},persistOff:{vi:'Chưa bật — dùng app đều + thỉnh thoảng bấm Sao lưu để chắc chắn',en:'Not granted — use app regularly + back up now and then'}, cloudTitle:{vi:'Sao lưu đám mây',en:'Cloud backup'},cloudSub:{vi:'Qua Google Apps Script — không cần đăng nhập',en:'Via Google Apps Script — no login'},gasUrlPh:{vi:'Dán URL Apps Script (…/exec)',en:'Paste Apps Script URL (…/exec)'},gasSecretPh:{vi:'Mật khẩu bí mật (nếu có)',en:'Secret password (if any)'},gasSave:{vi:'Lưu & Kết nối',en:'Save & connect'},gasConnected:{vi:'Đã kết nối — tự sao lưu lên Drive ✓',en:'Connected — auto-backup to Drive ✓'},gasOff:{vi:'Chưa cấu hình',en:'Not set up'},gasErr:{vi:'Không kết nối được. Kiểm tra URL/mật khẩu & quyền deploy.',en:'Connection failed. Check URL/secret & deploy access.'},gasBadUrl:{vi:'URL phải là link Apps Script kết thúc bằng /exec.',en:'URL must be an Apps Script link ending in /exec.'},drivePushNow:{vi:'Đồng bộ ngay',en:'Sync now'},drivePullNow:{vi:'Khôi phục từ Drive',en:'Restore from Drive'},drivePushed:{vi:'Đã sao lưu lên Drive ✓',en:'Backed up ✓'},drivePulled:{vi:'Đã khôi phục ✓',en:'Restored ✓'},driveConfirmPull:{vi:'Khôi phục dữ liệu từ Drive? (ghi đè dữ liệu hiện có trên máy)',en:'Restore from Drive? (overwrites current local data)'},
  verLabel:{vi:'Phiên bản',en:'Version'},updateReady:{vi:'Có bản cập nhật mới! Đang tải lại…',en:'New update available! Reloading…'},
+ setN:{vi:n=>`Set ${n}`,en:n=>`Set ${n}`},done:{vi:'Đã xong',en:'Done'},
  fuelTitle:{vi:'Dinh dưỡng',en:'Nutrition'},fuelSub:{vi:'Ước tính theo hồ sơ & mục tiêu',en:'Estimated from profile & goal'},perDay:{vi:'kcal / ngày',en:'kcal / day'},protein:{vi:'Đạm (Protein)',en:'Protein'},carb:{vi:'Tinh bột (Carb)',en:'Carbs'},fat:{vi:'Chất béo (Fat)',en:'Fat'},mealsTitle:{vi:'Gợi ý bữa ăn',en:'Meal suggestions'},
  nutNote:{vi:'Ước tính tham khảo (Mifflin-St Jeor), không phải lời khuyên y tế. Sau 2–3 tuần nếu cân nặng không đổi theo hướng mong muốn thì chỉnh ±200 kcal.',en:'Reference estimate (Mifflin-St Jeor), not medical advice. After 2–3 weeks, adjust by ±200 kcal if weight isn’t moving as intended.'},
  goalBulkRow:{vi:t=>`Thặng dư nhẹ để lên cơ (TDEE ${t} + 350)`,en:t=>`Slight surplus to build (TDEE ${t} + 350)`},goalCutRow:{vi:t=>`Thâm hụt để giảm mỡ (TDEE ${t} − 500)`,en:t=>`Deficit to lose fat (TDEE ${t} − 500)`},goalMaintRow:{vi:t=>`Bằng mức tiêu hao (TDEE ${t})`,en:t=>`At maintenance (TDEE ${t})`},
@@ -578,11 +615,16 @@ function mmss(s){const m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart
 function lastPerf(id){for(let i=history.length-1;i>=0;i--){const it=(history[i].items||[]).find(x=>x.id===id);if(it&&it.sets.length){return{date:history[i].ts,s:it.sets.map(x=>`${x.w?fmt(x.w)+'×':''}${x.r}${x.rpe?' @'+x.rpe:''}`).join(', ')};}}return null;}
 
 /* ===== render week ===== */
+function thisWeekDone(){
+  const now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);
+  const done={};history.filter(s=>s.ts>=mon.getTime()).forEach(s=>{done[s.key]=s;});return done;}
 function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.label;
   $('planNote').textContent=`${L.goalShort[profile.goal][lang]} · ${L.lvShort[profile.level][lang]} · ${profile.days} ${t('daysWk')} · ${locLabel()}`;
-  const g=$('grid');g.innerHTML='';
+  const g=$('grid');g.innerHTML='';const wkDone=thisWeekDone();let nextFound=false;
   pack.days.forEach((day,i)=>{const card=document.createElement('div');card.className='day'+(day?'':' rest');
     if(!day){card.innerHTML=`<div class="day-top"><div class="daynum">•</div><div class="dmeta"><div class="dname" style="color:var(--muted)">${dayName(i)}</div></div></div>`;g.appendChild(card);return;}
+    const doneSession=wkDone[day.key];const isNext=!doneSession&&!nextFound;if(isNext)nextFound=true;
+    const collapsed=!isNext;
     const exs=genDay(day.key);let rows='';
     exs.forEach(ex=>{const[lo,hi]=range(ex.k),tset=setsFor(ex.k),sg=suggest(ex.id),o=orm(ex.id),skey=i+':'+ex.id,ss=superLinks.has(ex.ovKey);
       if(!setState[skey])setState[skey]=Array.from({length:tset},()=>({w:sg.w??'',r:sg.r,rpe:'',done:false}));
@@ -606,20 +648,30 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
             <button class="minibtn" data-rest="${restSec(ex.k)}"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 13V9M9 2h6"/></svg>${restSec(ex.k)}s</button>
             ${o?`<span class="orm">1RM ~ <b>${o}kg</b></span>`:''}
           </div></div></div>`;});
-    card.innerHTML=`<div class="day-top"><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div></div>${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div>`;
-    g.appendChild(card);updateRing(i);});
+    const chevronSVG='<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+    if(doneSession){
+      const ds=doneSession;
+      card.className='day completed collapsed';
+      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
+        <div class="donesummary">${ds.setCount} set · ${ds.volume.toLocaleString()} kg${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span>${chevronSVG}</div>
+        <div class="day-content">${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
+    } else {
+      card.className='day'+(collapsed?' collapsed':'');
+      card.innerHTML=`<div class="day-top"${collapsed?' data-toggle':''}><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div>${collapsed?chevronSVG:''}</div>
+        <div class="day-content">${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
+    }
+    g.appendChild(card);if(!doneSession)updateRing(i);});
 }
 function dayName(i){return t('daysWk')&&(lang==='vi'?['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','CN']:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])[i];}
-function setRowHTML(s,si){return `<div class="setrow${s.done?' done':''}${s.drop?' drop':''}" data-si="${si}">
+function setRowHTML(s,si){const wt=s.w===''||s.w==null?'–':fmt(s.w),rt=s.r||'–',rpt=s.rpe?'@'+s.rpe:'';
+  return `<div class="setrow${s.done?' done':''}${s.drop?' drop':''}" data-si="${si}">
   <span class="setno">${s.drop?'▼':si+1}</span>
-  <div class="wr"><input class="sw" inputmode="decimal" placeholder="kg" value="${s.w??''}"><u>kg</u></div><span class="mul">×</span>
-  <div class="wr"><input class="sr" inputmode="numeric" placeholder="rep" value="${s.r??''}"><u>rep</u></div>
-  <input class="rpe" inputmode="decimal" placeholder="@" title="RPE" value="${s.rpe??''}">
+  <div class="setvals" data-openpk><span class="sv-w">${wt}<u>kg</u></span><span class="mul">×</span><span class="sv-r">${rt}<u>rep</u></span>${rpt?`<span class="sv-rpe">${rpt}</span>`:''}</div>
   <button class="setdone">${chk}</button><button class="setcancel" title="Xóa set"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6"/></svg></button></div>`;}
 function updateRing(i){const r=document.querySelector(`[data-ring="${i}"]`);if(!r)return;const card=r.closest('.day');
   const tot=card.querySelectorAll('.ex').length,c=card.querySelectorAll('.ex.done').length;
   r.style.setProperty('--p',tot?Math.round(c/tot*100):0);r.classList.toggle('full',c===tot&&tot>0);r.querySelector('b').textContent=`${c}/${tot}`;}
-function captureSets(exEl){const st=setState[exEl.dataset.skey];if(!st)return;exEl.querySelectorAll('.setrow').forEach(row=>{const si=+row.dataset.si,w=parseFloat(row.querySelector('.sw').value),r=parseInt(row.querySelector('.sr').value),rp=parseFloat(row.querySelector('.rpe').value);st[si].w=isNaN(w)?'':w;st[si].r=isNaN(r)?'':r;st[si].rpe=isNaN(rp)?'':rp;});
+function captureSets(exEl){/* values are in setState already (set by picker) — capture notes only */
   const nt=exEl.querySelector('[data-note]');if(nt)exNotes[exEl.dataset.skey]=nt.value;}
 function renderSets(exEl){exEl.querySelector('.sets').innerHTML=setState[exEl.dataset.skey].map(setRowHTML).join('');}
 function finalizeEx(exEl){const st=setState[exEl.dataset.skey],id=exEl.dataset.id,allDone=st.length>0&&st.every(s=>s.done);exEl.classList.toggle('done',allDone);
@@ -646,12 +698,51 @@ $('grid').addEventListener('click',e=>{
   const as=e.target.closest('[data-addset]');if(as){addSet(as.closest('.ex'),false);return;}
   const dp=e.target.closest('[data-drop]');if(dp){addSet(dp.closest('.ex'),true);return;}
   const nt=e.target.closest('[data-notetgl]');if(nt){toggleNote(nt.closest('.ex'));return;}
+  const tgl=e.target.closest('[data-toggle]');if(tgl){tgl.closest('.day').classList.toggle('collapsed');return;}
+  const pk=e.target.closest('[data-openpk]');if(pk){openPicker(pk.closest('.ex'),pk.closest('.setrow'));return;}
   const sd=e.target.closest('.setdone');if(sd){toggleSet(sd.closest('.ex'),sd.closest('.setrow'));return;}
   const sc=e.target.closest('.setcancel');if(sc){cancelSet(sc.closest('.ex'),sc.closest('.setrow'));return;}
   const fin=e.target.closest('[data-finish]');if(fin){finishSession(+fin.dataset.finish);return;}
   const tick=e.target.closest('[data-tick]');if(tick){toggleAll(tick.closest('.ex'));return;}});
 $('grid').addEventListener('input',e=>{if(e.target.matches('[data-note]')){exNotes[e.target.closest('.ex').dataset.skey]=e.target.value;saveNotes();}});
 $('resetWeek').addEventListener('click',()=>{setState={};renderWeek()});
+
+/* ===== scroll picker ===== */
+const PK_WEIGHTS=[],PK_REPS=[],PK_RPE=[''];
+for(let w=0;w<=200;w+=2.5)PK_WEIGHTS.push(w);
+for(let r=1;r<=50;r++)PK_REPS.push(r);
+for(let p=6;p<=10;p+=0.5)PK_RPE.push(p);
+let pkCtx=null;
+function fillCol(el,vals,sel){el.innerHTML=vals.map((v,i)=>`<div class="po" data-i="${i}">${v===''?'–':v}</div>`).join('');
+  const idx=vals.indexOf(sel);scrollToIdx(el,idx>=0?idx:0);}
+function scrollToIdx(el,idx){el.scrollTop=idx*44;}
+function readCol(el,vals){const idx=Math.round(el.scrollTop/44);return vals[Math.max(0,Math.min(idx,vals.length-1))];}
+function highlightCol(el){const idx=Math.round(el.scrollTop/44);el.querySelectorAll('.po').forEach((p,i)=>{p.classList.toggle('sel',i===idx);});}
+function openPicker(exEl,row){
+  const st=setState[exEl.dataset.skey],si=+row.dataset.si,s=st[si];
+  captureSets(exEl);
+  const w=s.w===''||s.w==null?0:+s.w,r=s.r||6,rpe=s.rpe||'';
+  // find closest weight
+  let wIdx=0,minD=999;PK_WEIGHTS.forEach((v,i)=>{if(Math.abs(v-w)<minD){minD=Math.abs(v-w);wIdx=i;}});
+  $('pkTitle').textContent=t('setN',si+1);
+  fillCol($('pkW'),PK_WEIGHTS,PK_WEIGHTS[wIdx]);
+  fillCol($('pkR'),PK_REPS,r);
+  fillCol($('pkRpe'),PK_RPE,rpe===''?'':+rpe);
+  pkCtx={exEl,si};
+  $('picker').classList.remove('hide');
+  // scroll after visible
+  setTimeout(()=>{scrollToIdx($('pkW'),wIdx);scrollToIdx($('pkR'),PK_REPS.indexOf(r)>=0?PK_REPS.indexOf(r):5);
+    const ri=PK_RPE.indexOf(rpe===''?'':+rpe);scrollToIdx($('pkRpe'),ri>=0?ri:0);
+    highlightCol($('pkW'));highlightCol($('pkR'));highlightCol($('pkRpe'));},50);
+}
+['pkW','pkR','pkRpe'].forEach(id=>{$(id).addEventListener('scroll',()=>highlightCol($(id)),{passive:true});});
+$('pkDone').addEventListener('click',()=>{if(!pkCtx)return;
+  const st=setState[pkCtx.exEl.dataset.skey],si=pkCtx.si;
+  st[si].w=readCol($('pkW'),PK_WEIGHTS);st[si].r=readCol($('pkR'),PK_REPS);
+  const rpe=readCol($('pkRpe'),PK_RPE);st[si].rpe=rpe===''?'':rpe;
+  renderSets(pkCtx.exEl);$('picker').classList.add('hide');pkCtx=null;});
+$('pkCancel').addEventListener('click',()=>{$('picker').classList.add('hide');pkCtx=null;});
+$('picker').addEventListener('click',e=>{if(e.target.id==='picker'){$('picker').classList.add('hide');pkCtx=null;}});
 
 /* ===== rest timer ===== */
 function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)();for(let n=0;n<2;n++){const o=a.createOscillator(),g=a.createGain(),ti=a.currentTime+n*0.28;o.connect(g);g.connect(a.destination);o.type='sine';o.frequency.value=880;g.gain.setValueAtTime(.0001,ti);g.gain.exponentialRampToValueAtTime(.35,ti+.02);g.gain.exponentialRampToValueAtTime(.0001,ti+.22);o.start(ti);o.stop(ti+.24);}}catch{}}
