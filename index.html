@@ -713,8 +713,8 @@ function renderSets(exEl){exEl.querySelector('.sets').innerHTML=setState[exEl.da
 function finalizeEx(exEl){const st=setState[exEl.dataset.skey],id=exEl.dataset.id,allDone=st.length>0&&st.every(s=>s.done);exEl.classList.toggle('done',allDone);
   const ds=st.filter(s=>s.done&&s.r);if(ds.length){let top=ds[0];ds.forEach(s=>{if((+s.w||0)*1000+(+s.r)>(+top.w||0)*1000+(+top.r))top=s;});logs[id]={w:top.w===''||top.w==null?null:+top.w,r:+top.r,date:Date.now()};saveLogs();}
   updateRing(+exEl.dataset.d);}
-function toggleSet(exEl,row){const st=setState[exEl.dataset.skey],si=+row.dataset.si;const w=parseFloat(row.querySelector('.sw').value),r=parseInt(row.querySelector('.sr').value),rp=parseFloat(row.querySelector('.rpe').value);
-  st[si].w=isNaN(w)?'':w;st[si].r=isNaN(r)?'':r;st[si].rpe=isNaN(rp)?'':rp;const nowDone=!st[si].done;st[si].done=nowDone;row.classList.toggle('done',nowDone);finalizeEx(exEl);
+function toggleSet(exEl,row){const st=setState[exEl.dataset.skey],si=+row.dataset.si;
+  const nowDone=!st[si].done;st[si].done=nowDone;row.classList.toggle('done',nowDone);finalizeEx(exEl);
   if(nowDone){const di=+exEl.dataset.d;if(!sessionStart[di])sessionStart[di]=Date.now();
     if(!superLinks.has(exEl.dataset.ov)){const ex=EXBY[exEl.dataset.id];startRest(restSec(ex.k));}}}
 function toggleAll(exEl){captureSets(exEl);const st=setState[exEl.dataset.skey],allDone=st.every(s=>s.done);st.forEach(s=>s.done=!allDone);renderSets(exEl);finalizeEx(exEl);}
