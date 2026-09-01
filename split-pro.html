@@ -13,7 +13,8 @@
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:pan-x pan-y}
   html{-webkit-text-size-adjust:100%;-webkit-touch-callout:none;overscroll-behavior:none}
   body{background:var(--ink);color:var(--text);font-family:'Inter',system-ui,sans-serif;line-height:1.5;padding:20px 14px 96px;min-height:100vh;-webkit-user-select:none;user-select:none}
-  input,textarea,select{-webkit-user-select:text;user-select:text;font-size:16px!important}
+  input,textarea,select{-webkit-user-select:text;user-select:text;font-size:16px!important;touch-action:manipulation}
+  button,.chip,.tab,.setdone,.setcancel,.setvals,.minibtn,.swapopt,.tick{touch-action:manipulation}
   .wrap{max-width:760px;margin:0 auto}
   h1,h2,h3{line-height:1.05}
   .hide{display:none!important}
@@ -966,9 +967,11 @@ document.addEventListener('gestureend',function(e){e.preventDefault();},{passive
 // block pinch: prevent multi-touch on both start AND move
 document.addEventListener('touchstart',function(e){if(e.touches.length>1)e.preventDefault();},{passive:false});
 document.addEventListener('touchmove',function(e){if(e.touches.length>1)e.preventDefault();},{passive:false});
-// block double-tap zoom
+// block double-tap zoom (skip interactive elements so buttons work)
 let lastTouchEnd=0;
-document.addEventListener('touchend',function(e){const now=Date.now();if(now-lastTouchEnd<300){e.preventDefault();}lastTouchEnd=now;},{passive:false});
+document.addEventListener('touchend',function(e){
+  if(e.target.closest('button,a,input,select,textarea,.setdone,.setcancel,.setvals,.tick,.minibtn,.chip,.tab,.swapopt,[data-toggle],[data-openpk]'))return;
+  const now=Date.now();if(now-lastTouchEnd<300){e.preventDefault();}lastTouchEnd=now;},{passive:false});
 // prevent iOS viewport scale changes programmatically
 if(window.visualViewport){window.visualViewport.addEventListener('resize',function(){if(window.visualViewport.scale!==1){document.body.style.transform='scale(1)';document.body.style.transform='';}});}
 
