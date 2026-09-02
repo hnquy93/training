@@ -755,15 +755,18 @@ $('grid').addEventListener('click',e=>{
   const pk=e.target.closest('[data-openpk]');if(pk){openPicker(pk.closest('.ex'),pk.closest('.setrow'));return;}
   const fin=e.target.closest('[data-finish]');if(fin){finishSession(+fin.dataset.finish);return;}
   const tick=e.target.closest('[data-tick]');if(tick){toggleAll(tick.closest('.ex'));return;}});
-/* setdone + setcancel: touchend for reliable iOS, click fallback for desktop */
+/* setdone + setcancel: touchstart for instant iOS response + click for desktop */
 let _sdLock=false;
-function handleSetBtn(e){
-  const sd=e.target.closest('.setdone');
-  if(sd){e.preventDefault();e.stopPropagation();if(!_sdLock){_sdLock=true;toggleSet(sd.closest('.ex'),sd.closest('.setrow'));setTimeout(()=>{_sdLock=false;},350);}return;}
-  const sc=e.target.closest('.setcancel');
-  if(sc){e.preventDefault();e.stopPropagation();if(!_sdLock){_sdLock=true;cancelSet(sc.closest('.ex'),sc.closest('.setrow'));setTimeout(()=>{_sdLock=false;},350);}return;}}
-$('grid').addEventListener('touchend',handleSetBtn,{passive:false});
-$('grid').addEventListener('click',handleSetBtn);
+$('grid').addEventListener('touchstart',function(e){
+  const sd=e.target.closest('[data-setdone]');
+  if(sd){e.preventDefault();e.stopImmediatePropagation();if(!_sdLock){_sdLock=true;try{toggleSet(sd.closest('.ex'),sd.closest('.setrow'));}catch(err){console.error(err);}setTimeout(()=>{_sdLock=false;},400);}return;}
+  const sc=e.target.closest('[data-setcancel]');
+  if(sc){e.preventDefault();e.stopImmediatePropagation();if(!_sdLock){_sdLock=true;try{cancelSet(sc.closest('.ex'),sc.closest('.setrow'));}catch(err){console.error(err);}setTimeout(()=>{_sdLock=false;},400);}return;}
+},{passive:false,capture:true});
+$('grid').addEventListener('click',function(e){
+  const sd=e.target.closest('[data-setdone]');if(sd){if(!_sdLock){_sdLock=true;try{toggleSet(sd.closest('.ex'),sd.closest('.setrow'));}catch(err){}setTimeout(()=>{_sdLock=false;},400);}e.preventDefault();return;}
+  const sc=e.target.closest('[data-setcancel]');if(sc){if(!_sdLock){_sdLock=true;try{cancelSet(sc.closest('.ex'),sc.closest('.setrow'));}catch(err){}setTimeout(()=>{_sdLock=false;},400);}e.preventDefault();return;}
+});
 $('grid').addEventListener('input',e=>{if(e.target.matches('[data-note]')){exNotes[e.target.closest('.ex').dataset.skey]=e.target.value;saveNotes();}});
 $('resetWeek').addEventListener('click',()=>{setState={};renderWeek()});
 
