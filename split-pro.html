@@ -246,6 +246,15 @@
   .pk-item{height:44px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--muted)}
   .pk-label{text-align:center;font-size:10px;color:var(--muted);font-weight:700;padding:10px 0 0;letter-spacing:.15em;text-transform:uppercase}
 
+  .libgroup{margin-bottom:18px}
+  .libgroup h3{font-family:'Anton',sans-serif;font-size:18px;text-transform:uppercase;margin-bottom:8px;color:var(--volt)}
+  .libcard{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+  .libcard:last-child{border-bottom:none}
+  .libcard:active{background:var(--surface-2)}
+  .libcard .lname{font-weight:600;font-size:14px;flex:1;min-width:0}
+  .libcard .leq{font-size:11px;color:var(--muted)}
+  .libcard .lkind{font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase}
+
   @media(max-width:480px){body{padding:16px 11px 96px}.gif{width:64px;height:64px}.macros{gap:7px}.macro{padding:10px}}
 </style>
 </head>
@@ -358,6 +367,12 @@
       <button class="btn ghost" id="editProfile" style="width:100%" data-i18n="editProfile">Chỉnh hồ sơ / dụng cụ</button>
     </div>
 
+    <div class="tabpage hide" data-page="lib">
+      <div class="page-h"><div><h2 data-i18n="libTitle">Bài tập</h2><p data-i18n="libSub">Thư viện theo nhóm cơ</p></div></div>
+      <div class="chips" id="libFilter" style="margin-bottom:14px"></div>
+      <div id="libList"></div>
+    </div>
+
     <div class="tabpage hide" data-page="fuel">
       <div class="page-h"><div><h2 data-i18n="fuelTitle">Dinh dưỡng</h2><p data-i18n="fuelSub">Ước tính theo hồ sơ & mục tiêu</p></div></div>
       <div class="kcal"><div class="big"><span id="kcal">0</span><u data-i18n="perDay">kcal / ngày</u></div><div class="goalrow" id="kcalGoal"></div>
@@ -399,13 +414,14 @@
 <div class="tabbar hide" id="tabbar"><div class="in">
   <button class="tab" data-go="train" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M4 9h2.5M17.5 9H20M4 15h2.5M17.5 15H20M6.5 12h11"/></svg><span data-i18n="tabTrain">Tập</span></button>
   <button class="tab" data-go="hist" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 2M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4"/></svg><span data-i18n="tabHist">Lịch sử</span></button>
+  <button class="tab" data-go="lib" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h10M4 18h7"/></svg><span data-i18n="tabLib">Bài tập</span></button>
   <button class="tab" data-go="me" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 19v-2M9 19v-6M14 19v-9M19 19V6"/></svg><span data-i18n="tabStats">Chỉ số</span></button>
   <button class="tab" data-go="fuel" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M12 3c3.5 3 5 6 5 9a5 5 0 0 1-10 0c0-1.2.3-2.3.8-3.3M12 21v-4"/></svg><span data-i18n="tabFuel">Dinh dưỡng</span></button>
 </div></div>
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='1.6';
+const APP_VERSION='1.7';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -427,7 +443,8 @@ const L={
  errFill:{vi:'Vui lòng điền đủ các mục (dụng cụ có thể để trống nếu tập chay).',en:'Please fill all fields (equipment can be empty for bodyweight).'},
  errNum:{vi:'Kiểm tra lại tuổi / chiều cao / cân nặng.',en:'Check your age / height / weight.'},
  resetWeek:{vi:'Bỏ tick tuần',en:'Reset week'},splitLabel:{vi:'Kiểu chia (đề xuất tự động)',en:'Split (auto-suggested)'},rec:{vi:'đề xuất',en:'suggested'},
- tabTrain:{vi:'Tập',en:'Train'},tabHist:{vi:'Lịch sử',en:'History'},tabStats:{vi:'Chỉ số',en:'Stats'},tabFuel:{vi:'Dinh dưỡng',en:'Nutrition'},
+ tabTrain:{vi:'Tập',en:'Train'},tabHist:{vi:'Lịch sử',en:'History'},tabLib:{vi:'Bài tập',en:'Exercises'},tabStats:{vi:'Chỉ số',en:'Stats'},tabFuel:{vi:'Dinh dưỡng',en:'Nutrition'},
+ libTitle:{vi:'Bài tập',en:'Exercises'},libSub:{vi:'Thư viện theo nhóm cơ',en:'Library by muscle group'},libAll:{vi:'Tất cả',en:'All'},
  rest:{vi:'Nghỉ',en:'Rest'},nextUp:{vi:'Buổi tới:',en:'Next:'},lastTime:{vi:'Lần trước',en:'Last time'},
  tgFirst:{vi:'buổi đầu',en:'first time'},tgAddRep:{vi:'thêm rep',en:'add reps'},tgPlusRep:{vi:'cố thêm 1 rep',en:'+1 rep'},tgUp:{vi:'đạt mốc — tăng tạ 💪',en:'hit target — go up 💪'},tgDeload:{vi:'deload — nhẹ lại',en:'deload — lighter'},
  sgFirst:{vi:n=>`chọn mức nhẹ, ${n} rep đúng kỹ thuật`,en:n=>`start light, ${n} clean reps`},
@@ -839,14 +856,46 @@ function openInfo(id){const ex=EXBY[id];
 $('mClose').onclick=()=>$('modal').classList.add('hide');
 $('modal').addEventListener('click',e=>{if(e.target.id==='modal')$('modal').classList.add('hide')});
 
-/* ===== swap ===== */
-function openSwap(slot,ovKey,curId){swapCtx={slot,ovKey};const avail=POOL[slot].filter(x=>hasEq(x.eq)),hidden=POOL[slot].length-avail.length;
-  $('swapTitle').textContent=`${t('swapT')} · ${gName(SLOTG[slot])}`;$('swapHint').textContent=hidden>0?t('swapHint1',avail.length,hidden):t('swapHint2',avail.length);
-  $('swapList').innerHTML=avail.map(x=>`<button class="swapopt" data-pick="${x.id}" data-cur="${x.id===curId?1:0}">${gifHTML(x.img)}<div class="st"><b>${exName(x.id)}</b><small>${eqLabel(x.eq)}</small></div>${x.id===curId?`<span class="cur">${t('using')}</span>`:''}</button>`).join('');
+/* ===== swap — show all exercises from same muscle group ===== */
+const MUSCLE_GROUPS=['chest','back','legs','sh','bi','tri'];
+const MUSCLE_SLOTS={chest:['chest_c','chest_i'],back:['back_c','back_i'],legs:['quad_c','ham','leg_i','calf'],sh:['sh_c','sh_i'],bi:['bi'],tri:['tri']};
+function openSwap(slot,ovKey,curId){swapCtx={slot,ovKey};
+  const group=SLOTG[slot];const slots=MUSCLE_SLOTS[group]||[slot];
+  const seen=new Set();const allEx=[];
+  slots.forEach(s=>(POOL[s]||[]).forEach(e=>{if(!seen.has(e.id)){seen.add(e.id);allEx.push({...EXBY[e.id],available:hasEq(e.eq)});}}));
+  // sort: available first, then compound before isolation, then by name
+  allEx.sort((a,b)=>(b.available-a.available)||(a.k==='c'?-1:1)-(b.k==='c'?-1:1));
+  const avail=allEx.filter(x=>x.available),hidden=allEx.length-avail.length;
+  $('swapTitle').textContent=`${t('swapT')} · ${gName(group)}`;
+  $('swapHint').textContent=hidden>0?t('swapHint1',avail.length,hidden):t('swapHint2',allEx.length);
+  $('swapList').innerHTML=allEx.map(x=>`<button class="swapopt" data-pick="${x.id}" data-cur="${x.id===curId?1:0}" style="${x.available?'':'opacity:.4;pointer-events:none'}">
+    ${gifHTML(x.img)}<div class="st"><b>${exName(x.id)}</b><small>${eqLabel(x.eq)} · ${x.k==='c'?t('compound'):t('isolation')}</small></div>
+    ${x.id===curId?`<span class="cur">${t('using')}</span>`:''}</button>`).join('');
   $('swap').classList.remove('hide');}
 $('swapList').addEventListener('click',e=>{const b=e.target.closest('[data-pick]');if(!b||!swapCtx)return;overrides[swapCtx.ovKey]=b.dataset.pick;saveOver();$('swap').classList.add('hide');renderWeek();renderStats();});
 $('swapClose').onclick=()=>$('swap').classList.add('hide');
 $('swap').addEventListener('click',e=>{if(e.target.id==='swap')$('swap').classList.add('hide')});
+
+/* ===== exercise library tab ===== */
+let libFilter='all';
+function renderLibrary(){
+  const fEl=$('libFilter');
+  fEl.innerHTML=`<button class="chip" data-lf="all" aria-pressed="${libFilter==='all'}">${t('libAll')}</button>`+
+    MUSCLE_GROUPS.map(g=>`<button class="chip" data-lf="${g}" aria-pressed="${libFilter===g}">${gName(g)}</button>`).join('');
+  const groups=libFilter==='all'?MUSCLE_GROUPS:[libFilter];
+  let html='';
+  groups.forEach(g=>{
+    const slots=MUSCLE_SLOTS[g],exs=[],seen=new Set();
+    slots.forEach(s=>(POOL[s]||[]).forEach(e=>{if(!seen.has(e.id)){seen.add(e.id);exs.push({...EXBY[e.id]});}}));
+    html+=`<div class="libgroup"><h3>${gName(g)}</h3><div class="card">`;
+    exs.forEach(ex=>{const avail=hasEq(ex.eq);
+      html+=`<div class="libcard" data-libex="${ex.id}" style="${avail?'':'opacity:.4'}">
+        ${gifHTML(ex.img)}<div style="flex:1;min-width:0"><div class="lname">${exName(ex.id)}</div>
+        <div class="leq">${eqLabel(ex.eq)} · ${ex.k==='c'?t('compound'):t('isolation')}${avail?'':' · ⚠ cần thêm dụng cụ'}</div></div></div>`;});
+    html+=`</div></div>`;});
+  $('libList').innerHTML=html;}
+$('libFilter').addEventListener('click',e=>{const b=e.target.closest('[data-lf]');if(!b)return;libFilter=b.dataset.lf;renderLibrary();});
+$('libList').addEventListener('click',e=>{const c=e.target.closest('[data-libex]');if(!c)return;openInfo(c.dataset.libex);});
 
 /* ===== charts ===== */
 function lineChart(pts,color){if(!pts.length)return `<div class="chartempty">${t('chartEmpty')}</div>`;if(pts.length===1)pts=[{...pts[0]},pts[0]];
@@ -956,7 +1005,7 @@ function renderNutrition(){const c=calc();$('kcal').textContent=c.target.toLocal
   $('meals').innerHTML=meals.map(([k,p,f])=>`<div class="meal"><div class="mk">${Math.round(c.target*p)} kcal</div><div class="mt"><b>${t(k)}</b><p>${t(f)}</p></div></div>`).join('');}
 
 /* ===== tabs ===== */
-function go(page){document.querySelectorAll('.tabpage').forEach(p=>p.classList.toggle('hide',p.dataset.page!==page));document.querySelectorAll('.tab').forEach(t2=>t2.setAttribute('aria-selected',t2.dataset.go===page));if(page==='hist')renderHistory();if(page==='me')renderStats();window.scrollTo(0,0);}
+function go(page){document.querySelectorAll('.tabpage').forEach(p=>p.classList.toggle('hide',p.dataset.page!==page));document.querySelectorAll('.tab').forEach(t2=>t2.setAttribute('aria-selected',t2.dataset.go===page));if(page==='hist')renderHistory();if(page==='me')renderStats();if(page==='lib')renderLibrary();window.scrollTo(0,0);}
 document.querySelectorAll('.tab').forEach(tb=>tb.addEventListener('click',()=>go(tb.dataset.go)));
 $('editProfile').addEventListener('click',()=>{fillOnboard();$('app').classList.add('hide');$('tabbar').classList.add('hide');$('onboard').classList.remove('hide');window.scrollTo(0,0);});
 
