@@ -505,7 +505,7 @@ const eqLabel=eq=>t(EQLABEL[eq]);
 const EXBY={};for(const s in POOL)POOL[s].forEach(e=>EXBY[e.id]={...e,slot:s,g:SLOTG[s],k:SLOTK[s]});
 const exName=id=>{const e=EXBY[id];return lang==='en'?e.en:e.vi;};
 
-const DAYSLOTS={push:['chest_c','chest_i','sh_c','sh_i','tri','tri'],pull:['back_c','back_c','back_i','bi','bi','back_i'],legs:['quad_c','ham','quad_c','leg_i','ham','calf'],upper:['chest_c','back_c','sh_c','back_i','sh_i','bi','tri'],lower:['quad_c','ham','quad_c','leg_i','ham','calf'],full:['quad_c','chest_c','back_c','sh_c','ham','calf'],fullB:['ham','sh_c','back_c','quad_c','chest_c','sh_i'],fullC:['quad_c','chest_c','back_i','sh_c','bi','tri'],chest:['chest_c','chest_c','chest_i','tri','chest_i'],back:['back_c','back_c','back_c','back_i','back_i'],shoulders:['sh_c','sh_i','sh_i','sh_i','sh_c'],arms:['bi','bi','bi','tri','tri','tri']};
+const DAYSLOTS={push:['chest_c','chest_i','sh_c','sh_i','tri','tri'],pull:['back_c','back_c','back_i','bi','bi','back_i'],legs:['quad_c','ham','quad_c','leg_i','ham','calf'],upper:['chest_c','back_c','sh_c','bi','tri','back_i','sh_i'],lower:['quad_c','ham','quad_c','leg_i','ham','calf'],full:['quad_c','chest_c','back_c','sh_c','ham','calf'],fullB:['ham','sh_c','back_c','quad_c','chest_c','sh_i'],fullC:['quad_c','chest_c','back_i','sh_c','bi','tri'],chest:['chest_c','chest_c','chest_i','tri','chest_i'],back:['back_c','back_c','back_c','back_i','back_i'],shoulders:['sh_c','sh_i','sh_i','sh_i','sh_c'],arms:['bi','bi','bi','tri','tri','tri']};
 
 function buildSplits(n){const R=null,d=(name,focus,key)=>({name,focus,key}),p={};
  if(n===1){p.full={label:'Full Body',note:'1',rec:1,days:[d('FULL BODY','full','full'),R,R,R,R,R,R]};}
@@ -695,7 +695,8 @@ function setRowHTML(s,si){const wt=s.w===''||s.w==null?'–':fmt(s.w),rt=s.r||'�
   return `<div class="setrow${s.done?' done':''}${s.drop?' drop':''}" data-si="${si}">
   <span class="setno">${s.drop?'▼':si+1}</span>
   <div class="setvals" data-openpk><span class="sv-w">${wt}<u>kg</u></span><span class="mul">×</span><span class="sv-r">${rt}<u>rep</u></span>${rpt?`<span class="sv-rpe">${rpt}</span>`:''}</div>
-  <button class="setdone">${chk}</button><button class="setcancel" title="Xóa set"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6"/></svg></button></div>`;}
+  <button class="setdone" data-setdone="${si}" type="button">${chk}</button>
+  <button class="setcancel" data-setcancel="${si}" type="button"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6"/></svg></button></div>`;}
 function updateRing(i){const r=document.querySelector(`[data-ring="${i}"]`);if(!r)return;const card=r.closest('.day');
   const tot=card.querySelectorAll('.ex').length,c=card.querySelectorAll('.ex.done').length;
   r.style.setProperty('--p',tot?Math.round(c/tot*100):0);r.classList.toggle('full',c===tot&&tot>0);r.querySelector('b').textContent=`${c}/${tot}`;}
@@ -728,10 +729,17 @@ $('grid').addEventListener('click',e=>{
   const nt=e.target.closest('[data-notetgl]');if(nt){toggleNote(nt.closest('.ex'));return;}
   const tgl=e.target.closest('[data-toggle]');if(tgl){tgl.closest('.day').classList.toggle('collapsed');return;}
   const pk=e.target.closest('[data-openpk]');if(pk){openPicker(pk.closest('.ex'),pk.closest('.setrow'));return;}
-  const sd=e.target.closest('.setdone');if(sd){toggleSet(sd.closest('.ex'),sd.closest('.setrow'));return;}
-  const sc=e.target.closest('.setcancel');if(sc){cancelSet(sc.closest('.ex'),sc.closest('.setrow'));return;}
   const fin=e.target.closest('[data-finish]');if(fin){finishSession(+fin.dataset.finish);return;}
   const tick=e.target.closest('[data-tick]');if(tick){toggleAll(tick.closest('.ex'));return;}});
+/* setdone + setcancel: touchend for reliable iOS, click fallback for desktop */
+let _sdLock=false;
+function handleSetBtn(e){
+  const sd=e.target.closest('.setdone');
+  if(sd){e.preventDefault();e.stopPropagation();if(!_sdLock){_sdLock=true;toggleSet(sd.closest('.ex'),sd.closest('.setrow'));setTimeout(()=>{_sdLock=false;},350);}return;}
+  const sc=e.target.closest('.setcancel');
+  if(sc){e.preventDefault();e.stopPropagation();if(!_sdLock){_sdLock=true;cancelSet(sc.closest('.ex'),sc.closest('.setrow'));setTimeout(()=>{_sdLock=false;},350);}return;}}
+$('grid').addEventListener('touchend',handleSetBtn,{passive:false});
+$('grid').addEventListener('click',handleSetBtn);
 $('grid').addEventListener('input',e=>{if(e.target.matches('[data-note]')){exNotes[e.target.closest('.ex').dataset.skey]=e.target.value;saveNotes();}});
 $('resetWeek').addEventListener('click',()=>{setState={};renderWeek()});
 
