@@ -429,7 +429,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='1.8';
+const APP_VERSION='1.9';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -465,7 +465,7 @@ const L={
  plateTitle:{vi:'Tính bánh tạ & khởi động',en:'Plate & warm-up calculator'},bar:{vi:'thanh',en:'bar'},dbBar:{vi:'0 (tạ đơn)',en:'0 (dumbbell)'},perSide:{vi:'mỗi bên:',en:'per side:'},barOnly:{vi:'chỉ thanh',en:'bar only'},warmup:{vi:'Khởi động gợi ý',en:'Suggested warm-up'},mainSet:{vi:'set chính',en:'work set'},
  swapT:{vi:'Đổi bài',en:'Swap exercise'},swapHint1:{vi:(a,h)=>`${a} bài phù hợp dụng cụ (${h} bài khác cần thêm dụng cụ).`,en:(a,h)=>`${a} options for your gear (${h} more need other equipment).`},swapHint2:{vi:a=>`${a} bài cùng nhóm cơ.`,en:a=>`${a} options for this muscle.`},using:{vi:'Đang dùng',en:'In use'},
  close:{vi:'Đóng',en:'Close'},
- sumDone:{vi:n=>`Hoàn thành ${n}`,en:n=>`${n} complete`},ssSet:{vi:'set',en:'sets'},ssKg:{vi:'kg tổng',en:'kg total'},ssTime:{vi:'thời gian',en:'time'},prNew:{vi:n=>`🏆 ${n} kỷ lục mới!`,en:n=>`🏆 ${n} new PRs!`},sumClose:{vi:'Tuyệt vời!',en:'Awesome!'},noSets:{vi:'Chưa có set nào được đánh dấu ✓ trong buổi này.',en:'No sets marked ✓ in this workout yet.'},
+ sumDone:{vi:n=>`Hoàn thành ${n}`,en:n=>`${n} complete`},ssSet:{vi:'set',en:'sets'},ssKg:{vi:'tổng',en:'total'},ssTime:{vi:'thời gian',en:'time'},prNew:{vi:n=>`🏆 ${n} kỷ lục mới!`,en:n=>`🏆 ${n} new PRs!`},sumClose:{vi:'Tuyệt vời!',en:'Awesome!'},noSets:{vi:'Chưa có set nào được đánh dấu ✓ trong buổi này.',en:'No sets marked ✓ in this workout yet.'},
  histTitle:{vi:'Lịch sử',en:'History'},histSub:{vi:'Các buổi đã hoàn thành',en:'Completed workouts'},histEmpty:{vi:'Chưa có buổi nào. Hoàn thành một buổi tập để lưu lại đây.',en:'No workouts yet. Finish one to see it here.'},delAsk:{vi:'Xóa buổi tập này?',en:'Delete this workout?'},
  statsTitle:{vi:'Chỉ số',en:'Stats'},statsSub:{vi:'Thống kê · sức mạnh · tiến bộ',en:'Stats · strength · progress'},
  dWorkouts:{vi:'Buổi đã tập',en:'Workouts'},dVolume:{vi:'Tổng tạ đã nâng',en:'Total lifted'},dStreak:{vi:'Chuỗi liên tiếp',en:'Day streak'},dWeek:{vi:'Buổi tuần này',en:'This week'},unitTon:{vi:'tấn',en:'t'},unitDay:{vi:'ngày',en:'d'},
@@ -693,14 +693,14 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
             <button class="minibtn" data-drop>${t('dropSet')}</button>
             <button class="minibtn" data-notetgl>${t('noteBtn')}</button>
             <button class="minibtn" data-rest="${restSec(ex.k)}"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 13V9M9 2h6"/></svg>${restSec(ex.k)}s</button>
-            ${o?`<span class="orm">1RM ~ <b>${o}kg</b></span>`:''}
+            ${o?`<span class="orm">1RM ~ <b>${fmtW(o)}${wUnit()}</b></span>`:''}
           </div></div></div>`;});
     const chevronSVG='<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
     if(doneSession){
       const ds=doneSession;
       const doneRows=ds.items.map(it=>{const ex=EXBY[it.id];if(!ex)return '';
         const setsStr=it.sets.map((s,si)=>`<div class="setrow done" data-si="${si}"><span class="setno">${si+1}</span>
-          <div class="setvals done-readonly"><span class="sv-w">${s.w?fmtW(s.w):'–'}<u>kg</u></span><span class="mul">×</span><span class="sv-r">${s.r}<u>rep</u></span>${s.rpe?`<span class="sv-rpe">@${s.rpe}</span>`:''}</div></div>`).join('');
+          <div class="setvals done-readonly"><span class="sv-w">${s.w?fmtW(s.w):'–'}<u>${wUnit()}</u></span><span class="mul">×</span><span class="sv-r">${s.r}<u>rep</u></span>${s.rpe?`<span class="sv-rpe">@${s.rpe}</span>`:''}</div></div>`).join('');
         return `<div class="ex done" data-id="${it.id}">
           ${gifHTML(ex.img,`data-open="${it.id}"`)}
           <div class="exbody">
@@ -711,7 +711,7 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
           </div></div>`;}).join('');
       card.className='day completed collapsed';
       card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
-        <div class="donesummary">${ds.setCount} set · ${ds.volume.toLocaleString()} kg${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span>${chevronSVG}</div>
+        <div class="donesummary">${ds.setCount} set · ${fmt(toDisplay(ds.volume))} ${wUnit()}${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span>${chevronSVG}</div>
         <div class="day-content">${doneRows}</div>`;
     } else {
       card.className='day'+(collapsed?' collapsed':'');
@@ -843,8 +843,8 @@ function finishSession(i){const pack=currentPack(),day=pack.days[i];if(!day)retu
 function showSummary(s,newPRs){const dur=s.dur?mmss(s.dur):'—';
   $('sumBody').innerHTML=`<div class="sumhero"><div class="st">🎉</div><h3>${t('sumDone',s.name)}</h3>
     <div class="mg" style="text-align:center">${new Date(s.ts).toLocaleDateString(lang==='vi'?'vi-VN':'en-US',{weekday:'long',day:'2-digit',month:'2-digit'})}</div></div>
-    <div class="sumstats"><div class="ss"><b>${s.setCount}</b><small>${t('ssSet')}</small></div><div class="ss"><b>${s.volume.toLocaleString()}</b><small>${t('ssKg')}</small></div><div class="ss"><b>${dur}</b><small>${t('ssTime')}</small></div></div>
-    ${newPRs.length?`<div style="margin-bottom:12px"><span class="prbadge">${t('prNew',newPRs.length)}</span><div style="font-size:12.5px;color:var(--muted);margin-top:8px">${newPRs.map(p=>`${exName(p.id)}: <b style="color:var(--volt);font-family:'JetBrains Mono',monospace">${p.e1rm}kg</b> 1RM`).join('<br>')}</div></div>`:''}
+    <div class="sumstats"><div class="ss"><b>${s.setCount}</b><small>${t('ssSet')}</small></div><div class="ss"><b>${fmt(toDisplay(s.volume))}</b><small>${wUnit()} ${t('ssKg')}</small></div><div class="ss"><b>${dur}</b><small>${t('ssTime')}</small></div></div>
+    ${newPRs.length?`<div style="margin-bottom:12px"><span class="prbadge">${t('prNew',newPRs.length)}</span><div style="font-size:12.5px;color:var(--muted);margin-top:8px">${newPRs.map(p=>`${exName(p.id)}: <b style="color:var(--volt);font-family:'JetBrains Mono',monospace">${fmtW(p.e1rm)}${wUnit()}</b> 1RM`).join('<br>')}</div></div>`:''}
     <div class="card" style="margin-bottom:14px">${s.items.map(it=>`<div class="hex" style="padding:8px 12px"><span class="hn">${exName(it.id)}</span><span class="hv">${it.sets.map(x=>`${x.w?fmtW(x.w)+'×':''}${x.r}`).join(', ')}</span></div>`).join('')}</div>
     <button class="btn" id="sumClose">${t('sumClose')}</button>`;
   $('summary').classList.remove('hide');$('sumClose').onclick=()=>$('summary').classList.add('hide');}
@@ -855,7 +855,7 @@ function renderHistory(){const el=$('histList');
   if(!history.length){el.innerHTML=`<div class="empty">${t('histEmpty')}</div>`;return;}
   el.innerHTML=[...history].reverse().map((s,ri)=>{const idx=history.length-1-ri,d=new Date(s.ts);
     return `<div class="hsession"><div class="hhead"><div class="hdate">${d.getDate()}<small>${lang==='vi'?'Th'+(d.getMonth()+1):d.toLocaleDateString('en',{month:'short'})}</small></div>
-      <div class="hmeta"><b>${s.name}</b><div class="hs">${s.setCount} ${t('ssSet')} · ${s.volume.toLocaleString()} kg${s.dur?' · '+mmss(s.dur):''}</div></div>
+      <div class="hmeta"><b>${s.name}</b><div class="hs">${s.setCount} ${t('ssSet')} · ${fmt(toDisplay(s.volume))} ${wUnit()}${s.dur?' · '+mmss(s.dur):''}</div></div>
       <button class="hdel" data-del="${idx}">×</button></div>
       <div class="hbody">${s.items.map(it=>`<div class="hex"><span class="hn">${exName(it.id)}</span><span class="hv">${it.sets.map(x=>`${x.w?fmtW(x.w)+'×':''}${x.r}${x.rpe?' @'+x.rpe:''}`).join(', ')}</span></div>${it.note?`<div class="hnote">“${it.note}”</div>`:''}`).join('')}</div></div>`;}).join('');}
 $('histList').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;if(confirm(t('delAsk'))){history.splice(+b.dataset.del,1);saveHist();rebuildPRs();renderHistory();renderStats();renderDeload();}});
@@ -867,7 +867,7 @@ function openInfo(id){const ex=EXBY[id];
   $('mName').textContent=exName(id);$('mGroup').textContent=`${t('muscle')}: ${gName(ex.g)} · ${eqLabel(ex.eq)} · ${ex.k==='c'?t('compound'):t('isolation')}`;$('mHow').textContent=t('how');
   const sg=suggest(id),defW=sg.w||(ex.eq==='bb'?40:20);
   if(ex.eq==='bb'||ex.eq==='db'){$('mPlate').innerHTML=`<div class="lab" style="margin-bottom:8px">${t('plateTitle')}</div>
-    <div class="pcin"><input id="pcW" inputmode="decimal" value="${fmt(defW)}"><span style="color:var(--muted);font-size:12px">kg · ${t('bar')}</span>
+    <div class="pcin"><input id="pcW" inputmode="decimal" value="${fmt(toDisplay(defW))}"><span style="color:var(--muted);font-size:12px">${wUnit()} · ${t('bar')}</span>
       <select id="pcBar"><option value="20">20kg</option><option value="15">15kg</option><option value="10">10kg</option><option value="0">${t('dbBar')}</option></select></div>
     <div class="plates" id="pcOut"></div><div class="warmup" id="pcWarm"></div>`;
     const cp=()=>{const total=parseFloat($('pcW').value)||0,bar=+$('pcBar').value;let per=(total-bar)/2,out='';const P=[25,20,15,10,5,2.5,1.25];
@@ -937,23 +937,23 @@ function renderStats(){const c=calc();updatePersistUI();updateDriveUI();
   const totVol=history.reduce((a,s)=>a+s.volume,0),dset=new Set(history.map(s=>new Date(s.ts).toDateString()));let streak=0,dd=new Date();dd.setHours(0,0,0,0);if(!dset.has(dd.toDateString()))dd.setDate(dd.getDate()-1);while(dset.has(dd.toDateString())){streak++;dd.setDate(dd.getDate()-1);}
   const thisWk=history.filter(s=>isoWeek(s.ts)===isoWeek(Date.now())).length;
   $('dash').innerHTML=`<div class="dcard"><div class="dv">${history.length}</div><div class="dl">${t('dWorkouts')}</div></div>
-    <div class="dcard"><div class="dv">${(totVol/1000).toFixed(1)}<u>${t('unitTon')}</u></div><div class="dl">${t('dVolume')}</div></div>
+    <div class="dcard"><div class="dv">${(toDisplay(totVol)/1000).toFixed(1)}<u>${t('unitTon')}</u></div><div class="dl">${t('dVolume')}</div></div>
     <div class="dcard"><div class="dv">${streak}<u>${t('unitDay')}</u></div><div class="dl">${t('dStreak')}</div></div>
     <div class="dcard"><div class="dv">${thisWk}</div><div class="dl">${t('dWeek')}</div></div>`;
   renderCalendar(dset);
-  $('bwNow').textContent=(body.length?body[body.length-1].w:profile.weight)+' kg';
+  $('bwNow').textContent=fmtW(body.length?body[body.length-1].w:profile.weight)+' '+wUnit();
   $('bwChart').innerHTML=lineChart(body.map(b=>({x:dstr(b.ts),y:b.w})),'#5EC8FF');
   const exIds=[...new Set(history.flatMap(s=>s.items.map(i=>i.id)))].filter(id=>EXBY[id]);
   if(exIds.length){if(!exIds.includes(chartExId))chartExId=exIds[0];$('exSel').innerHTML=exIds.map(id=>`<option value="${id}"${id===chartExId?' selected':''}>${exName(id)}</option>`).join('');drawOrmChart();}
   else{$('exSel').innerHTML='<option>—</option>';$('ormChart').innerHTML=`<div class="chartempty">${t('orm1Empty')}</div>`;}
   const wv={};history.forEach(s=>{wv[isoWeek(s.ts)]=(wv[isoWeek(s.ts)]||0)+s.volume;});const wk2=Object.keys(wv).sort();
-  $('volChart').innerHTML=lineChart(wk2.map(k=>({x:'W'+k.split('-')[1],y:Math.round(wv[k]/100)/10})),'#FFDE59');
+  $('volChart').innerHTML=lineChart(wk2.map(k=>({x:'W'+k.split('-')[1],y:Math.round(toDisplay(wv[k])/100)/10})),'#FFDE59');
   const prIds=Object.keys(prs).filter(id=>EXBY[id]).sort((a,b)=>prs[b].e1rm-prs[a].e1rm);
-  $('prList').innerHTML=prIds.length?prIds.map(id=>`<div class="stat"><span class="sn">${exName(id)}</span><span class="sv pr">${prs[id].e1rm} kg <small>(${fmt(prs[id].w||0)}×${prs[id].r})</small></span></div>`).join(''):`<div class="empty">${t('prEmpty')}</div>`;
+  $('prList').innerHTML=prIds.length?prIds.map(id=>`<div class="stat"><span class="sn">${exName(id)}</span><span class="sv pr">${fmtW(prs[id].e1rm)} ${wUnit()} <small>(${fmtW(prs[id].w||0)}×${prs[id].r})</small></span></div>`).join(''):`<div class="empty">${t('prEmpty')}</div>`;
   const pack=currentPack(),vol={};pack.days.forEach(day=>{if(!day)return;genDay(day.key).forEach(ex=>{vol[ex.g]=(vol[ex.g]||0)+setsFor(ex.k)})});
   const entries=Object.entries(vol).sort((a,b)=>b[1]-a[1]),max=Math.max(1,...entries.map(e=>e[1]));
   $('volList').innerHTML=entries.length?entries.map(([g,v])=>`<div class="volrow"><div class="vh"><span>${gName(g)}</span><b>${v} ${t('ssSet')}</b></div><div class="volbar"><i style="width:${v/max*100}%"></i></div></div>`).join(''):`<div class="empty">${t('volEmpty')}</div>`;}
-function drawOrmChart(){const id=chartExId,pts=[];history.forEach(s=>{const it=s.items.find(x=>x.id===id);if(it){const best=it.sets.reduce((a,x)=>Math.max(a,e1rm(x.w,x.r)),0);if(best)pts.push({x:dstr(s.ts),y:best});}});$('ormChart').innerHTML=lineChart(pts,'#FFDE59');}
+function drawOrmChart(){const id=chartExId,pts=[];history.forEach(s=>{const it=s.items.find(x=>x.id===id);if(it){const best=it.sets.reduce((a,x)=>Math.max(a,e1rm(x.w,x.r)),0);if(best)pts.push({x:dstr(s.ts),y:toDisplay(best)});}});$('ormChart').innerHTML=lineChart(pts,'#FFDE59');}
 $('exSel').addEventListener('change',e=>{chartExId=e.target.value;drawOrmChart();});
 function renderCalendar(dset){const now=new Date(),y=now.getFullYear(),m=now.getMonth(),first=new Date(y,m,1),off=(first.getDay()+6)%7,days=new Date(y,m+1,0).getDate();
   let html=L.wdShort[lang].map(w=>`<div class="cdh">${w}</div>`).join('');for(let i=0;i<off;i++)html+='<div></div>';
