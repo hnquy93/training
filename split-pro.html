@@ -271,8 +271,9 @@
 <div class="wrap">
 
   <div class="hero">
-    <button class="langtog" id="langTog" style="right:66px"><span id="langLabel">EN</span></button>
-    <button class="langtog" id="unitTog" style="right:16px"><span id="unitLabel">lbs</span></button>
+    <button class="langtog" id="langTog" style="right:116px"><span id="langLabel">EN</span></button>
+    <button class="langtog" id="unitTog" style="right:66px"><span id="unitLabel">lbs</span></button>
+    <button class="langtog" id="settingsBtn" style="right:16px">⚙</button>
     <div class="kicker" data-i18n="kicker">Huấn luyện viên cá nhân</div>
     <h1>MY&nbsp;<span>TRAINING</span></h1>
     <p class="sub" id="heroSub" data-i18n="heroSub"></p>
@@ -405,6 +406,17 @@
 <div class="modal hide" id="swap"><div class="box"><div class="mbody"><h3 id="swapTitle"></h3><div class="mg" id="swapHint"></div>
   <div id="swapList" style="display:grid;gap:8px"></div><button class="btn ghost" id="swapClose" style="width:100%;margin-top:14px" data-i18n="close">Đóng</button></div></div></div>
 
+<div class="modal hide" id="applyModal"><div class="box"><div class="mbody">
+  <h3 id="applyTitle"></h3>
+  <p style="color:var(--muted);font-size:13px;margin:8px 0 14px" id="applyHint"></p>
+  <div class="apply-opts" id="applyOpts">
+    <button class="btn" id="applyNow" style="margin-bottom:8px"></button>
+    <button class="btn ghost" id="applyNextMon" style="width:100%;margin-bottom:12px"></button>
+  </div>
+  <div id="applyCal" style="margin-bottom:14px"></div>
+  <button class="btn ghost" id="applyCancel" style="width:100%"></button>
+</div></div></div>
+
 <div class="modal hide" id="summary"><div class="box"><div class="mbody" id="sumBody"></div></div></div>
 
 <div class="picker-overlay hide" id="picker"><div class="picker-sheet">
@@ -431,7 +443,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='2.3';
+const APP_VERSION='2.4';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -484,6 +496,12 @@ const L={
  skipped:{vi:'Đã bỏ',en:'Skipped'},skipBtn:{vi:'Bỏ qua hôm nay',en:'Skip today'},
  skipAsk:{vi:(n,d)=>`Bạn đã bỏ buổi ${n} (${d}). Muốn tập bù?`,en:(n,d)=>`You skipped ${n} (${d}). Make it up?`},
  skipYes:{vi:'Tập bù',en:'Make up'},skipNo:{vi:'Không, tập đúng lịch',en:'No, follow schedule'},
+ applyTitle:{vi:'Áp dụng thay đổi từ khi nào?',en:'When to apply changes?'},
+ applyHint:{vi:'Chọn ngày để giáo án mới bắt đầu. Tuần hiện tại sẽ không bị ảnh hưởng nếu chọn ngày sau.',en:'Pick a start date. Current week won\'t be affected if you pick a later date.'},
+ applyNow:{vi:'Áp dụng ngay lập tức',en:'Apply immediately'},
+ applyNext:{vi:'Từ thứ 2 tuần sau',en:'From next Monday'},
+ applyPick:{vi:'Chọn ngày khác',en:'Pick another date'},
+ applyCancel:{vi:'Hủy thay đổi',en:'Cancel changes'},
  fuelTitle:{vi:'Dinh dưỡng',en:'Nutrition'},fuelSub:{vi:'Ước tính theo hồ sơ & mục tiêu',en:'Estimated from profile & goal'},perDay:{vi:'kcal / ngày',en:'kcal / day'},protein:{vi:'Đạm (Protein)',en:'Protein'},carb:{vi:'Tinh bột (Carb)',en:'Carbs'},fat:{vi:'Chất béo (Fat)',en:'Fat'},mealsTitle:{vi:'Gợi ý bữa ăn',en:'Meal suggestions'},
  nutNote:{vi:'Ước tính tham khảo (Mifflin-St Jeor), không phải lời khuyên y tế. Sau 2–3 tuần nếu cân nặng không đổi theo hướng mong muốn thì chỉnh ±200 kcal.',en:'Reference estimate (Mifflin-St Jeor), not medical advice. After 2–3 weeks, adjust by ±200 kcal if weight isn’t moving as intended.'},
  goalBulkRow:{vi:t=>`Thặng dư nhẹ để lên cơ (TDEE ${t} + 350)`,en:t=>`Slight surplus to build (TDEE ${t} + 350)`},goalCutRow:{vi:t=>`Thâm hụt để giảm mỡ (TDEE ${t} − 500)`,en:t=>`Deficit to lose fat (TDEE ${t} − 500)`},goalMaintRow:{vi:t=>`Bằng mức tiêu hao (TDEE ${t})`,en:t=>`At maintenance (TDEE ${t})`},
@@ -601,8 +619,48 @@ $('presetChips').addEventListener('click',e=>{const b=e.target.closest('.chip[da
 $('genBtn').addEventListener('click',()=>{const age=+$('i_age').value,height=+$('i_height').value,weight=+$('i_weight').value;
   if(['sex','activity','goal','level','days'].some(k=>!sel[k])||!age||!height||!weight){$('obErr').textContent=t('errFill');return;}
   if(age<12||age>90||height<120||height>230||weight<30||weight>250){$('obErr').textContent=t('errNum');return;}
-  $('obErr').textContent='';profile={sex:sel.sex,age,height,weight,activity:+sel.activity,goal:sel.goal,level:sel.level,days:+sel.days,equip:[...sel.equip],created:Date.now()};
-  splitId=null;saveProfile();startApp();});
+  $('obErr').textContent='';
+  const newP={sex:sel.sex,age,height,weight,activity:+sel.activity,goal:sel.goal,level:sel.level,days:+sel.days,equip:[...sel.equip],created:profile?profile.created:Date.now()};
+  if(!profile){/* first time — apply immediately */
+    profile=newP;splitId=null;saveProfile();startApp();return;}
+  /* editing existing — ask when to apply */
+  pendingProfile=newP;showApplyModal();});
+let pendingProfile=null;
+function showApplyModal(){
+  $('applyTitle').textContent=t('applyTitle');$('applyHint').textContent=t('applyHint');
+  $('applyNow').textContent=t('applyNow');$('applyNextMon').textContent=t('applyNext');
+  $('applyCancel').textContent=t('applyCancel');
+  // render mini calendar for current + next month
+  const now=new Date(),y=now.getFullYear(),m=now.getMonth();
+  let calHTML='';
+  for(let mo=m;mo<=m+1;mo++){const mm=mo%12,yy=y+Math.floor(mo/12);
+    const first=new Date(yy,mm,1),off=(first.getDay()+6)%7,days=new Date(yy,mm+1,0).getDate();
+    const mName=new Date(yy,mm).toLocaleDateString(lang==='vi'?'vi-VN':'en-US',{month:'long',year:'numeric'});
+    calHTML+=`<div style="margin-bottom:10px"><div style="font-weight:700;font-size:13px;margin-bottom:6px">${mName}</div><div class="cal">`;
+    calHTML+=L.wdShort[lang].map(w=>`<div class="cdh">${w}</div>`).join('');
+    for(let i=0;i<off;i++)calHTML+='<div></div>';
+    for(let d=1;d<=days;d++){const dt=new Date(yy,mm,d);const mon=(dt.getDay()+6)%7===0;const past=dt<new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      calHTML+=`<div class="cd${mon?' hit':''}" style="${past?'opacity:.3;pointer-events:none':'cursor:pointer'}" data-applydate="${dt.toISOString()}">${d}</div>`;}
+    calHTML+='</div></div>';}
+  $('applyCal').innerHTML=calHTML;
+  $('applyModal').classList.remove('hide');}
+$('applyNow').addEventListener('click',()=>{applyProfileChange(new Date());});
+$('applyNextMon').addEventListener('click',()=>{const d=new Date();d.setDate(d.getDate()+(7-(d.getDay()+6)%7)%7||7);d.setHours(0,0,0,0);applyProfileChange(d);});
+$('applyCal').addEventListener('click',e=>{const c=e.target.closest('[data-applydate]');if(!c)return;applyProfileChange(new Date(c.dataset.applydate));});
+$('applyCancel').addEventListener('click',()=>{pendingProfile=null;$('applyModal').classList.add('hide');});
+$('applyModal').addEventListener('click',e=>{if(e.target.id==='applyModal'){pendingProfile=null;$('applyModal').classList.add('hide');}});
+function applyProfileChange(fromDate){
+  if(!pendingProfile)return;$('applyModal').classList.add('hide');
+  const now=new Date();now.setHours(0,0,0,0);
+  if(fromDate<=now){/* apply immediately */
+    profile=pendingProfile;splitId=null;saveProfile();setState={};weekSkips=new Set();saveSkips();pendingProfile=null;startApp();
+  } else {/* schedule for later */
+    store.set('sp_pending',JSON.stringify({profile:pendingProfile,from:fromDate.toISOString()}));
+    pendingProfile=null;startApp();/* keep current profile for now */
+  }
+}
+function checkPendingProfile(){try{const p=JSON.parse(store.get('sp_pending'));if(!p)return;
+  if(new Date(p.from)<=new Date()){profile=p.profile;splitId=null;saveProfile();setState={};weekSkips=new Set();saveSkips();store.set('sp_pending','');}}catch{}}
 function fillOnboard(){if(!profile)return;$('i_age').value=profile.age;$('i_height').value=profile.height;$('i_weight').value=profile.weight;
   const set=(n,v)=>{const box=document.querySelector(`[data-set="${n}"]`);if(box){box.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.v==String(v)));sel[n]=String(v);}};
   set('sex',profile.sex);set('activity',profile.activity);set('goal',profile.goal);set('level',profile.level);set('days',profile.days);
@@ -1071,7 +1129,9 @@ function renderNutrition(){const c=calc();$('kcal').textContent=c.target.toLocal
 /* ===== tabs ===== */
 function go(page){document.querySelectorAll('.tabpage').forEach(p=>p.classList.toggle('hide',p.dataset.page!==page));document.querySelectorAll('.tab').forEach(t2=>t2.setAttribute('aria-selected',t2.dataset.go===page));if(page==='hist')renderHistory();if(page==='me')renderStats();if(page==='lib')renderLibrary();window.scrollTo(0,0);}
 document.querySelectorAll('.tab').forEach(tb=>tb.addEventListener('click',()=>go(tb.dataset.go)));
-$('editProfile').addEventListener('click',()=>{fillOnboard();$('app').classList.add('hide');$('tabbar').classList.add('hide');$('onboard').classList.remove('hide');window.scrollTo(0,0);});
+$('editProfile').addEventListener('click',openSettings);
+$('settingsBtn').addEventListener('click',openSettings);
+function openSettings(){fillOnboard();$('app').classList.add('hide');$('tabbar').classList.add('hide');$('onboard').classList.remove('hide');window.scrollTo(0,0);}
 
 /* ===== language toggle ===== */
 $('langTog').addEventListener('click',()=>{lang=lang==='vi'?'en':'vi';store.set('sp_lang',lang);applyStatic();showVer();if(profile&&!$('app').classList.contains('hide'))renderAll();});
@@ -1112,7 +1172,7 @@ async function checkUpdate(){try{
 async function requestPersist(){try{if(navigator.storage&&navigator.storage.persist){let p=navigator.storage.persisted?await navigator.storage.persisted():false;if(!p)p=await navigator.storage.persist();return !!p;}}catch{}return false;}
 function updatePersistUI(){const el=$('persistStat');if(!el)return;const msg=persistGranted===null?t('persistChk'):(persistGranted?t('persistOn'):t('persistOff'));el.textContent=t('persistTitle')+': '+msg;el.style.color=persistGranted?'var(--done)':'var(--muted)';}
 
-load();applyStatic();showVer();
+load();applyStatic();showVer();checkPendingProfile();
 requestPersist().then(p=>{persistGranted=p;updatePersistUI();});
 driveStartup();checkUpdate();
 if(profile){fillOnboard();startApp();}else{sel.equip=new Set(PRESETS.gym);paintEquip();paintPreset();}
