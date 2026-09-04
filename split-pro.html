@@ -431,7 +431,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='2.1';
+const APP_VERSION='2.2';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -618,8 +618,11 @@ function currentPack(){const p=packs();if(!p[splitId])splitId=Object.keys(p)[0];
 function genDay(key){const slots=DAYSLOTS[key]||[],used=new Set(),out=[];
   slots.forEach((slot,si)=>{const avail=POOL[slot].filter(x=>hasEq(x.eq));if(!avail.length)return;
     const ovKey=key+'#'+si;let pick;
-    // manual override first
-    if(overrides[ovKey])pick=avail.find(x=>x.id===overrides[ovKey]);
+    // manual override: check same slot first, then entire muscle group
+    if(overrides[ovKey]){
+      pick=avail.find(x=>x.id===overrides[ovKey]);
+      if(!pick){const g=SLOTG[slot],gSlots=MUSCLE_SLOTS[g]||[slot];
+        for(const gs of gSlots){const ex=(POOL[gs]||[]).find(x=>x.id===overrides[ovKey]&&hasEq(x.eq));if(ex){pick={...EXBY[ex.id]};break;}}}}
     // auto-rotate: pick least-recently-used that isn't already used this day
     if(!pick){const unused=avail.filter(x=>!used.has(x.id));const pool=unused.length?unused:avail;
       pool.sort((a,b)=>(lastUsedTs(a.id)||0)-(lastUsedTs(b.id)||0));pick=pool[0];}
