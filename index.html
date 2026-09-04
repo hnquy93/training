@@ -438,7 +438,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='2.2';
+const APP_VERSION='2.3';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -872,7 +872,9 @@ $('rtSkip').onclick=stopRest;
 
 /* ===== finish session ===== */
 function finishSession(i){const pack=currentPack(),day=pack.days[i];if(!day)return;
-  const exs=genDay(day.key),items=[];let volume=0,setCount=0,newPRs=[];
+  const useKey=(makeupIdx!=null)?pack.days[makeupIdx].key:day.key;
+  const useName=(makeupIdx!=null)?pack.days[makeupIdx].name+' (tập bù)':day.name;
+  const exs=genDay(useKey),items=[];let volume=0,setCount=0,newPRs=[];
   document.querySelectorAll(`.ex[data-d="${i}"]`).forEach(el=>captureSets(el));
   exs.forEach(ex=>{const st=setState[i+':'+ex.id];if(!st)return;
     const sets=st.filter(s=>s.done&&s.r).map(s=>({w:s.w===''||s.w==null?null:+s.w,r:+s.r,rpe:s.rpe===''||s.rpe==null?null:+s.rpe,drop:!!s.drop}));
@@ -882,7 +884,7 @@ function finishSession(i){const pack=currentPack(),day=pack.days[i];if(!day)retu
     if(best>0&&best>((prs[ex.id]&&prs[ex.id].e1rm)||0)){const top=sets.reduce((a,s)=>e1rm(s.w,s.r)>e1rm(a.w,a.r)?s:a);prs[ex.id]={e1rm:best,w:top.w,r:top.r,ts:Date.now()};newPRs.push({id:ex.id,e1rm:best});}});
   if(!items.length){alert(t('noSets'));return;}
   const dur=sessionStart[i]?Math.round((Date.now()-sessionStart[i])/1000):null;
-  const sess={ts:Date.now(),key:day.key,name:day.name,items,volume:Math.round(volume),setCount,dur};
+  const sess={ts:Date.now(),key:useKey,name:useName,items,volume:Math.round(volume),setCount,dur};
   history.push(sess);saveHist();savePrs();
   exs.forEach(ex=>delete setState[i+':'+ex.id]);delete sessionStart[i];stopRest();
   if(makeupIdx!=null){weekSkips.delete(makeupIdx);saveSkips();makeupIdx=null;}
