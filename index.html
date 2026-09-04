@@ -82,6 +82,15 @@
   .day-top{display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid var(--line)}
   .day.rest .day-top{border-bottom:none}
   .donebadge{font-size:11px;font-weight:700;color:var(--done);background:var(--done-dim);padding:3px 9px;border-radius:7px;white-space:nowrap}
+  .skipbadge{font-size:11px;font-weight:700;color:var(--pink);background:rgba(255,143,163,.12);padding:3px 9px;border-radius:7px;white-space:nowrap}
+  .day.skipped{opacity:.55}
+  .day.skipped .daynum{color:var(--pink)!important}
+  .makeup{border:1px solid rgba(94,200,255,.3);background:rgba(94,200,255,.06);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .makeup .mt{flex:1;min-width:180px;color:var(--text)}.makeup .mt b{color:var(--blue)}
+  .makeup .mb{display:flex;gap:6px}
+  .makeup .mb button{font-family:inherit;font-weight:700;font-size:12px;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+  .makeup .mb .yes{background:var(--blue);color:#0a1520}
+  .makeup .mb .no{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
   .donesummary{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
   .done-readonly{cursor:default!important;border-color:transparent!important;background:transparent!important}
   .done-readonly:active{border-color:transparent!important;background:transparent!important}
@@ -429,7 +438,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='2.0';
+const APP_VERSION='2.1';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -479,6 +488,9 @@ const L={
  persistTitle:{vi:'Lưu trữ bền vững',en:'Persistent storage'},persistChk:{vi:'đang kiểm tra…',en:'checking…'},persistOn:{vi:'Đã bật — iOS sẽ không tự xóa dữ liệu ✓',en:'On — iOS won’t auto-evict your data ✓'},persistOff:{vi:'Chưa bật — dùng app đều + thỉnh thoảng bấm Sao lưu để chắc chắn',en:'Not granted — use app regularly + back up now and then'}, cloudTitle:{vi:'Sao lưu đám mây',en:'Cloud backup'},cloudSub:{vi:'Qua Google Apps Script — không cần đăng nhập',en:'Via Google Apps Script — no login'},gasUrlPh:{vi:'Dán URL Apps Script (…/exec)',en:'Paste Apps Script URL (…/exec)'},gasSecretPh:{vi:'Mật khẩu bí mật (nếu có)',en:'Secret password (if any)'},gasSave:{vi:'Lưu & Kết nối',en:'Save & connect'},gasConnected:{vi:'Đã kết nối — tự sao lưu lên Drive ✓',en:'Connected — auto-backup to Drive ✓'},gasOff:{vi:'Chưa cấu hình',en:'Not set up'},gasErr:{vi:'Không kết nối được. Kiểm tra URL/mật khẩu & quyền deploy.',en:'Connection failed. Check URL/secret & deploy access.'},gasBadUrl:{vi:'URL phải là link Apps Script kết thúc bằng /exec.',en:'URL must be an Apps Script link ending in /exec.'},drivePushNow:{vi:'Đồng bộ ngay',en:'Sync now'},drivePullNow:{vi:'Khôi phục từ Drive',en:'Restore from Drive'},drivePushed:{vi:'Đã sao lưu lên Drive ✓',en:'Backed up ✓'},drivePulled:{vi:'Đã khôi phục ✓',en:'Restored ✓'},driveConfirmPull:{vi:'Khôi phục dữ liệu từ Drive? (ghi đè dữ liệu hiện có trên máy)',en:'Restore from Drive? (overwrites current local data)'},
  verLabel:{vi:'Phiên bản',en:'Version'},updateReady:{vi:'Có bản cập nhật mới! Đang tải lại…',en:'New update available! Reloading…'},
  setN:{vi:n=>`Set ${n}`,en:n=>`Set ${n}`},done:{vi:'Đã xong',en:'Done'},
+ skipped:{vi:'Đã bỏ',en:'Skipped'},skipBtn:{vi:'Bỏ qua hôm nay',en:'Skip today'},
+ skipAsk:{vi:(n,d)=>`Bạn đã bỏ buổi ${n} (${d}). Muốn tập bù?`,en:(n,d)=>`You skipped ${n} (${d}). Make it up?`},
+ skipYes:{vi:'Tập bù',en:'Make up'},skipNo:{vi:'Không, tập đúng lịch',en:'No, follow schedule'},
  fuelTitle:{vi:'Dinh dưỡng',en:'Nutrition'},fuelSub:{vi:'Ước tính theo hồ sơ & mục tiêu',en:'Estimated from profile & goal'},perDay:{vi:'kcal / ngày',en:'kcal / day'},protein:{vi:'Đạm (Protein)',en:'Protein'},carb:{vi:'Tinh bột (Carb)',en:'Carbs'},fat:{vi:'Chất béo (Fat)',en:'Fat'},mealsTitle:{vi:'Gợi ý bữa ăn',en:'Meal suggestions'},
  nutNote:{vi:'Ước tính tham khảo (Mifflin-St Jeor), không phải lời khuyên y tế. Sau 2–3 tuần nếu cân nặng không đổi theo hướng mong muốn thì chỉnh ±200 kcal.',en:'Reference estimate (Mifflin-St Jeor), not medical advice. After 2–3 weeks, adjust by ±200 kcal if weight isn’t moving as intended.'},
  goalBulkRow:{vi:t=>`Thặng dư nhẹ để lên cơ (TDEE ${t} + 350)`,en:t=>`Slight surplus to build (TDEE ${t} + 350)`},goalCutRow:{vi:t=>`Thâm hụt để giảm mỡ (TDEE ${t} − 500)`,en:t=>`Deficit to lose fat (TDEE ${t} − 500)`},goalMaintRow:{vi:t=>`Bằng mức tiêu hao (TDEE ${t})`,en:t=>`At maintenance (TDEE ${t})`},
@@ -558,7 +570,7 @@ const exCount=()=>profile.level==='beginner'?5:(profile.level==='advanced'?7:6);
 const hasEq=eq=>eq==='bw'||profile.equip.includes(eq);
 
 /* ===== state ===== */
-let profile=null,splitId=null,logs={},overrides={},sel={equip:new Set()},swapCtx=null,setState={},rest={id:null,rem:0,total:0,paused:false},history=[],prs={},body=[],sessionStart={},chartExId=null,superLinks=new Set(),exNotes={},deloadOn=false,notifyTimers=[],persistGranted=null;
+let profile=null,splitId=null,logs={},overrides={},sel={equip:new Set()},swapCtx=null,setState={},rest={id:null,rem:0,total:0,paused:false},history=[],prs={},body=[],sessionStart={},chartExId=null,superLinks=new Set(),exNotes={},deloadOn=false,notifyTimers=[],persistGranted=null,weekSkips=new Set(),makeupIdx=null;
 const $=id=>document.getElementById(id);
 const chk='<svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg>';
 const fmt=n=>Number.isInteger(+n)?+n:(+n).toFixed(1);
@@ -573,6 +585,7 @@ function load(){
   try{body=JSON.parse(store.get('sp_body'))||[]}catch{body=[]}
   try{superLinks=new Set(JSON.parse(store.get('sp_super'))||[])}catch{superLinks=new Set()}
   try{exNotes=JSON.parse(store.get('sp_notes'))||{}}catch{exNotes={}}
+  try{weekSkips=new Set(JSON.parse(store.get('sp_skips'))||[])}catch{weekSkips=new Set()}
   deloadOn=store.get('sp_deload')==='1';splitId=store.get('sp_split')||null;
 }
 const saveProfile=()=>store.set('sp_profile',JSON.stringify(profile));
@@ -583,6 +596,7 @@ const savePrs=()=>store.set('sp_prs',JSON.stringify(prs));
 const saveBody=()=>store.set('sp_body',JSON.stringify(body));
 const saveSuper=()=>store.set('sp_super',JSON.stringify([...superLinks]));
 const saveNotes=()=>store.set('sp_notes',JSON.stringify(exNotes));
+const saveSkips=()=>store.set('sp_skips',JSON.stringify([...weekSkips]));
 
 /* ===== onboarding ===== */
 document.querySelectorAll('#onboard .chips[data-set]').forEach(box=>box.addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b||b.disabled)return;box.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c===b));sel[box.dataset.set]=b.dataset.v;}));
@@ -667,11 +681,20 @@ function thisWeekDone(){
 function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.label;
   $('planNote').textContent=`${L.goalShort[profile.goal][lang]} · ${L.lvShort[profile.level][lang]} · ${profile.days} ${t('daysWk')} · ${locLabel()}`;
   const g=$('grid');g.innerHTML='';const wkDone=thisWeekDone();let nextFound=false;
+  // find missed days this week (training days before today that aren't done or skipped)
+  const today=(new Date().getDay()+6)%7;
+  // clean old skips from previous weeks
+  const mon=new Date();mon.setDate(mon.getDate()-((mon.getDay()+6)%7));mon.setHours(0,0,0,0);
+  // find skipped training days
+  const missedDays=[];
+  pack.days.forEach((day,i)=>{if(day&&weekSkips.has(i))missedDays.push({idx:i,day});});
   pack.days.forEach((day,i)=>{const card=document.createElement('div');card.className='day'+(day?'':' rest');
     if(!day){card.innerHTML=`<div class="day-top"><div class="daynum">•</div><div class="dmeta"><div class="dname" style="color:var(--muted)">${dayName(i)}</div></div></div>`;g.appendChild(card);return;}
-    const doneSession=wkDone[i];const isNext=!doneSession&&!nextFound;if(isNext)nextFound=true;
+    const doneSession=wkDone[i];const isSkipped=weekSkips.has(i);
+    const isNext=!doneSession&&!isSkipped&&!nextFound;if(isNext)nextFound=true;
+    const useKey=(makeupIdx!=null&&isNext)?pack.days[makeupIdx].key:day.key;
     const collapsed=!isNext;
-    const exs=genDay(day.key);let rows='';
+    const exs=genDay(useKey);let rows='';
     exs.forEach(ex=>{const[lo,hi]=range(ex.k),tset=setsFor(ex.k),sg=suggest(ex.id),o=orm(ex.id),skey=i+':'+ex.id,ss=superLinks.has(ex.ovKey);
       if(!setState[skey]||setState[skey].every(s=>!s.done)){
         const sg2=suggest(ex.id),tset2=setsFor(ex.k);
@@ -715,12 +738,27 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
       card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
         <div class="donesummary">${ds.setCount} set · ${fmt(toDisplay(ds.volume))} ${wUnit()}${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span>${chevronSVG}</div>
         <div class="day-content">${doneRows}</div>`;
+    } else if(isSkipped){
+      card.className='day skipped collapsed';
+      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum">✕</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><span class="skipbadge">${t('skipped')}</span>${chevronSVG}</div>
+        <div class="day-content">${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
+    } else if(isNext){
+      // makeup banner if there are missed days
+      let makeupBanner='';
+      if(missedDays.length&&makeupIdx==null){
+        makeupBanner=missedDays.map(m=>`<div class="makeup"><div class="mt">${t('skipAsk',m.day.name,dayName(m.idx))}</div>
+          <div class="mb"><button class="yes" data-makeup="${m.idx}">${t('skipYes')}</button><button class="no" data-nomakeup>${t('skipNo')}</button></div></div>`).join('');
+      }
+      const showName=makeupIdx!=null?pack.days[makeupIdx].name+' (tập bù)':day.name;
+      card.className='day';
+      card.innerHTML=`<div class="day-top"><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${showName}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div></div>
+        ${makeupBanner}<div class="day-content">${rows}<div class="dayfoot" style="display:flex;gap:8px"><button class="btn finish" data-finish="${i}" style="flex:1">${t('finishBtn')}</button><button class="btn ghost" data-skip="${i}" style="flex:none;padding:14px 16px">${t('skipBtn')}</button></div></div>`;
     } else {
-      card.className='day'+(collapsed?' collapsed':'');
-      card.innerHTML=`<div class="day-top"${collapsed?' data-toggle':''}><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div>${collapsed?chevronSVG:''}</div>
+      card.className='day collapsed';
+      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div>${chevronSVG}</div>
         <div class="day-content">${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
     }
-    g.appendChild(card);if(!doneSession)updateRing(i);});
+    g.appendChild(card);if(!doneSession&&!isSkipped)updateRing(i);});
 }
 function dayName(i){return t('daysWk')&&(lang==='vi'?['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','CN']:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])[i];}
 function setRowHTML(s,si){const wt=fmtW(s.w),rt=s.r||'–',rpt=s.rpe?'@'+s.rpe:'';
@@ -762,6 +800,9 @@ $('grid').addEventListener('click',e=>{
   const tgl=e.target.closest('[data-toggle]');if(tgl){tgl.closest('.day').classList.toggle('collapsed');return;}
   const pk=e.target.closest('[data-openpk]');if(pk){openPicker(pk.closest('.ex'),pk.closest('.setrow'));return;}
   const fin=e.target.closest('[data-finish]');if(fin){finishSession(+fin.dataset.finish);return;}
+  const skip=e.target.closest('[data-skip]');if(skip){const idx=+skip.dataset.skip;weekSkips.add(idx);saveSkips();makeupIdx=null;setState={};renderWeek();return;}
+  const mu=e.target.closest('[data-makeup]');if(mu){makeupIdx=+mu.dataset.makeup;setState={};renderWeek();return;}
+  const nomu=e.target.closest('[data-nomakeup]');if(nomu){nomu.closest('.makeup').remove();return;}
   const tick=e.target.closest('[data-tick]');if(tick){toggleAll(tick.closest('.ex'));return;}});
 /* setdone + setcancel: touchstart for instant iOS response + click for desktop */
 let _sdLock=false;
@@ -841,6 +882,7 @@ function finishSession(i){const pack=currentPack(),day=pack.days[i];if(!day)retu
   const sess={ts:Date.now(),key:day.key,name:day.name,items,volume:Math.round(volume),setCount,dur};
   history.push(sess);saveHist();savePrs();
   exs.forEach(ex=>delete setState[i+':'+ex.id]);delete sessionStart[i];stopRest();
+  if(makeupIdx!=null){weekSkips.delete(makeupIdx);saveSkips();makeupIdx=null;}
   showSummary(sess,newPRs);renderWeek();renderStats();renderHistory();renderDeload();}
 function showSummary(s,newPRs){const dur=s.dur?mmss(s.dur):'—';
   $('sumBody').innerHTML=`<div class="sumhero"><div class="st">🎉</div><h3>${t('sumDone',s.name)}</h3>
@@ -983,7 +1025,7 @@ function scheduleNotifs(){notifyTimers.forEach(clearTimeout);notifyTimers=[];con
     const ms=target-now;if(ms<6048e5)notifyTimers.push(setTimeout(()=>{try{new Notification('MY TRAINING 💪',{body:(lang==='vi'?'Tới giờ tập: ':'Time to train: ')+d.name});}catch{}},ms));});}
 
 /* ===== Cloud sync via Google Apps Script ===== */
-const SYNC_KEYS=['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit'];
+const SYNC_KEYS=['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit','sp_skips'];
 let cloudUrl='',cloudSecret='',cloudOn=false,cloudDirty=false,cloudApplying=false,pushTimer=null;
 function collectData(){const d={};SYNC_KEYS.forEach(function(k){const v=store.get(k);if(v!=null)d[k]=v;});return d;}
 function applyData(d){cloudApplying=true;Object.keys(d||{}).forEach(function(k){store.set(k,d[k]);});cloudApplying=false;}
@@ -1014,7 +1056,7 @@ async function driveStartup(){cloudUrl=store.get('sp_gas_url')||'';cloudSecret=s
   try{const j=await gasLoad();if(j&&j.data&&String(j.mtime)!==store.get('sp_cloud_mtime')&&!cloudDirty){applyData(j.data);store.set('sp_cloud_mtime',String(j.mtime));reloadAfterPull();}}catch(e){}}
 
 /* ===== backup ===== */
-$('exportBtn').addEventListener('click',()=>{const data={};['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit'].forEach(k=>{const v=store.get(k);if(v)data[k]=v;});const blob=new Blob([JSON.stringify(data)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='my-training-backup.json';a.click();URL.revokeObjectURL(a.href);});
+$('exportBtn').addEventListener('click',()=>{const data={};['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit','sp_skips'].forEach(k=>{const v=store.get(k);if(v)data[k]=v;});const blob=new Blob([JSON.stringify(data)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='my-training-backup.json';a.click();URL.revokeObjectURL(a.href);});
 $('importBtn').addEventListener('click',()=>$('importFile').click());
 $('importFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const data=JSON.parse(rd.result);Object.keys(data).forEach(k=>store.set(k,data[k]));load();lang=store.get('sp_lang')||lang;applyStatic();fillOnboard();startApp();alert(t('restored'));}catch{alert(t('badFile'));}};rd.readAsText(f);});
 
