@@ -462,7 +462,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='2.5';
+const APP_VERSION='2.6';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -639,17 +639,13 @@ $('genBtn').addEventListener('click',()=>{const age=+$('i_age').value,height=+$(
   if(['sex','activity','goal','level','days'].some(k=>!sel[k])||!age||!height||!weight){$('obErr').textContent=t('errFill');return;}
   if(age<12||age>90||height<120||height>230||weight<30||weight>250){$('obErr').textContent=t('errNum');return;}
   $('obErr').textContent='';
-  const newP={sex:sel.sex,age,height,weight,activity:+sel.activity,goal:sel.goal,level:sel.level,days:+sel.days,equip:[...sel.equip],created:profile?profile.created:Date.now()};
-  if(!profile){/* first time — apply immediately */
-    profile=newP;splitId=null;saveProfile();startApp();return;}
-  /* editing existing — ask when to apply */
-  pendingProfile=newP;showApplyModal();});
+  pendingProfile={sex:sel.sex,age,height,weight,activity:+sel.activity,goal:sel.goal,level:sel.level,days:+sel.days,equip:[...sel.equip],created:profile?profile.created:Date.now()};
+  showApplyModal();});
 let pendingProfile=null;
 function showApplyModal(){
   $('applyTitle').textContent=t('applyTitle');$('applyHint').textContent=t('applyHint');
   $('applyNow').textContent=t('applyNow');$('applyNextMon').textContent=t('applyNext');
   $('applyCancel').textContent=t('applyCancel');
-  // render mini calendar for current + next month
   const now=new Date(),y=now.getFullYear(),m=now.getMonth();
   let calHTML='';
   for(let mo=m;mo<=m+1;mo++){const mm=mo%12,yy=y+Math.floor(mo/12);
@@ -658,8 +654,11 @@ function showApplyModal(){
     calHTML+=`<div style="margin-bottom:10px"><div style="font-weight:700;font-size:13px;margin-bottom:6px">${mName}</div><div class="cal">`;
     calHTML+=L.wdShort[lang].map(w=>`<div class="cdh">${w}</div>`).join('');
     for(let i=0;i<off;i++)calHTML+='<div></div>';
-    for(let d=1;d<=days;d++){const dt=new Date(yy,mm,d);const mon=(dt.getDay()+6)%7===0;const past=dt<new Date(now.getFullYear(),now.getMonth(),now.getDate());
-      calHTML+=`<div class="cd${mon?' hit':''}" style="${past?'opacity:.3;pointer-events:none':'cursor:pointer'}" data-applydate="${dt.toISOString()}">${d}</div>`;}
+    for(let d=1;d<=days;d++){const dt=new Date(yy,mm,d);
+      const isMon=(dt.getDay()+6)%7===0;
+      const isToday=dt.toDateString()===now.toDateString();
+      const past=dt<new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      calHTML+=`<div class="cd${isMon?' hit':''}${isToday?' today':''}" style="${past?'opacity:.3;pointer-events:none':'cursor:pointer'}" data-applydate="${dt.toISOString()}">${d}</div>`;}
     calHTML+='</div></div>';}
   $('applyCal').innerHTML=calHTML;
   $('applyModal').classList.remove('hide');}
