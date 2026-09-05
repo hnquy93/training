@@ -462,7 +462,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='2.6';
+const APP_VERSION='2.7';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -751,14 +751,24 @@ function thisWeekDone(){
     const d=new Date(s.ts),dayIdx=(d.getDay()+6)%7;
     if(!done[dayIdx])done[dayIdx]=s;
   });return done;}
-function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.label;
+function renderWeek(){
+  // check if pending profile should apply for viewed week
+  let activeProfile=profile;
+  try{const pend=JSON.parse(store.get('sp_pending')||'null');
+    if(pend&&pend.profile){const fromDate=new Date(pend.from),viewMon=getWeekMon(weekOffset);
+      if(viewMon>=fromDate){activeProfile=pend.profile;}}}catch{}
+  // temporarily swap profile for rendering
+  const origProfile=profile,origSplit=splitId;profile=activeProfile;
+  if(activeProfile!==origProfile&&activeProfile.days!==origProfile.days)splitId=null;
+  const pack=currentPack();$('planTitle').textContent=pack.label;
   $('planNote').textContent=`${L.goalShort[profile.goal][lang]} · ${L.lvShort[profile.level][lang]} · ${profile.days} ${t('daysWk')} · ${locLabel()}`;
   // week label
   const mon=getWeekMon(weekOffset),sun=new Date(mon);sun.setDate(sun.getDate()+6);
   const df={day:'2-digit',month:'2-digit'};const loc=lang==='vi'?'vi-VN':'en-GB';
   const isCurrent=weekOffset===0;
+  const isPending=activeProfile!==origProfile;
   $('weekLabel').innerHTML=isCurrent?`<b>${t('thisWeek')}</b><small>${mon.toLocaleDateString(loc,df)} – ${sun.toLocaleDateString(loc,df)}</small>`
-    :`${t('weekOf')}<br><b>${mon.toLocaleDateString(loc,df)} – ${sun.toLocaleDateString(loc,df)}</b>`;
+    :`${t('weekOf')}<br><b>${mon.toLocaleDateString(loc,df)} – ${sun.toLocaleDateString(loc,df)}</b>${isPending?'<br><small style="color:var(--blue)">📋 '+t('applyNext')+'</small>':''}`;
   const g=$('grid');g.innerHTML='';const wkDone=thisWeekDone();let nextFound=false;
   const today=(new Date().getDay()+6)%7;
   const missedDays=[];
@@ -832,6 +842,7 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
         <div class="day-content">${rows}${isCurrent?`<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div>`:''}</div>`;
     }
     g.appendChild(card);if(!doneSession&&!isSkipped)updateRing(i);});
+  profile=origProfile;splitId=origSplit;// restore after render
 }
 function dayName(i){return t('daysWk')&&(lang==='vi'?['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','CN']:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])[i];}
 function setRowHTML(s,si){const wt=fmtW(s.w),rt=s.r||'–',rpt=s.rpe?'@'+s.rpe:'';
