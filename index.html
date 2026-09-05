@@ -70,6 +70,13 @@
   .page-h h2{font-family:'Anton',sans-serif;font-size:26px;text-transform:uppercase}
   .page-h p{color:var(--muted);font-size:12.5px;margin-top:2px}
 
+  .weeknav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:14px}
+  .wn-btn{appearance:none;cursor:pointer;font-family:inherit;font-size:16px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;width:38px;height:38px;display:grid;place-items:center;transition:.15s}
+  .wn-btn:active{color:var(--volt);border-color:var(--volt)}
+  .wn-label{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--text);text-align:center;min-width:160px}
+  .wn-label small{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:2px}
+  .wn-label b{color:var(--volt)}
+
   .banner{border:1px solid rgba(255,222,89,.4);background:rgba(255,222,89,.08);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .banner b{color:var(--volt)}
 
@@ -329,6 +336,11 @@
     <div class="tabpage" data-page="train">
       <div class="page-h"><div><h2 id="planTitle">Plan</h2><p id="planNote"></p></div>
         <div style="display:flex;gap:6px"><button class="btn ghost" id="deloadBtn"></button><button class="btn ghost" id="resetWeek" data-i18n="resetWeek">Bỏ tick tuần</button></div></div>
+      <div class="weeknav">
+        <button class="wn-btn" id="prevWeek">◀</button>
+        <div class="wn-label" id="weekLabel"></div>
+        <button class="wn-btn" id="nextWeek">▶</button>
+      </div>
       <div class="banner hide" id="deloadBanner"></div>
       <div class="field" style="margin-bottom:14px"><span class="lab" style="display:block;margin-bottom:9px" data-i18n="splitLabel">Kiểu chia (đề xuất tự động)</span><div class="chips" id="splitChips"></div></div>
       <div id="grid"></div>
@@ -450,7 +462,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='2.4';
+const APP_VERSION='2.5';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -471,7 +483,7 @@ const L={
  genBtn:{vi:'Tạo giáo án của tôi →',en:'Build my plan →'},
  errFill:{vi:'Vui lòng điền đủ các mục (dụng cụ có thể để trống nếu tập chay).',en:'Please fill all fields (equipment can be empty for bodyweight).'},
  errNum:{vi:'Kiểm tra lại tuổi / chiều cao / cân nặng.',en:'Check your age / height / weight.'},
- resetWeek:{vi:'Bỏ tick tuần',en:'Reset week'},splitLabel:{vi:'Kiểu chia (đề xuất tự động)',en:'Split (auto-suggested)'},rec:{vi:'đề xuất',en:'suggested'},
+ resetWeek:{vi:'Bỏ tick tuần',en:'Reset week'},thisWeek:{vi:'Tuần này',en:'This week'},weekOf:{vi:'Tuần',en:'Week of'},splitLabel:{vi:'Kiểu chia (đề xuất tự động)',en:'Split (auto-suggested)'},rec:{vi:'đề xuất',en:'suggested'},
  tabTrain:{vi:'Tập',en:'Train'},tabHist:{vi:'Lịch sử',en:'History'},tabLib:{vi:'Bài tập',en:'Exercises'},tabStats:{vi:'Chỉ số',en:'Stats'},tabFuel:{vi:'Dinh dưỡng',en:'Nutrition'},
  libTitle:{vi:'Bài tập',en:'Exercises'},libSub:{vi:'Thư viện theo nhóm cơ',en:'Library by muscle group'},libAll:{vi:'Tất cả',en:'All'},
  rest:{vi:'Nghỉ',en:'Rest'},nextUp:{vi:'Buổi tới:',en:'Next:'},lastTime:{vi:'Lần trước',en:'Last time'},
@@ -588,7 +600,7 @@ const exCount=()=>profile.level==='beginner'?5:(profile.level==='advanced'?7:6);
 const hasEq=eq=>eq==='bw'||profile.equip.includes(eq);
 
 /* ===== state ===== */
-let profile=null,splitId=null,logs={},overrides={},sel={equip:new Set()},swapCtx=null,setState={},rest={id:null,rem:0,total:0,paused:false},history=[],prs={},body=[],sessionStart={},chartExId=null,superLinks=new Set(),exNotes={},deloadOn=false,notifyTimers=[],persistGranted=null,weekSkips=new Set(),makeupIdx=null;
+let profile=null,splitId=null,logs={},overrides={},sel={equip:new Set()},swapCtx=null,setState={},rest={id:null,rem:0,total:0,paused:false},history=[],prs={},body=[],sessionStart={},chartExId=null,superLinks=new Set(),exNotes={},deloadOn=false,notifyTimers=[],persistGranted=null,weekSkips=new Set(),makeupIdx=null,weekOffset=0;
 const $=id=>document.getElementById(id);
 const chk='<svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg>';
 const fmt=n=>Number.isInteger(+n)?+n:(+n).toFixed(1);
@@ -733,26 +745,29 @@ function mmss(s){const m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart
 function lastPerf(id){for(let i=history.length-1;i>=0;i--){const it=(history[i].items||[]).find(x=>x.id===id);if(it&&it.sets.length){return{date:history[i].ts,s:it.sets.map(x=>`${x.w?fmtW(x.w)+'×':''}${x.r}${x.rpe?' @'+x.rpe:''}`).join(', ')};}}return null;}
 
 /* ===== render week ===== */
+function getWeekMon(offset){const now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7)+(offset||0)*7);mon.setHours(0,0,0,0);return mon;}
 function thisWeekDone(){
-  const now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);
-  const done={};history.filter(s=>s.ts>=mon.getTime()).forEach(s=>{
-    const d=new Date(s.ts),dayIdx=(d.getDay()+6)%7;// 0=Mon..6=Sun
-    if(!done[dayIdx])done[dayIdx]=s;// keep first session per weekday
+  const mon=getWeekMon(weekOffset),sun=new Date(mon);sun.setDate(sun.getDate()+7);
+  const done={};history.filter(s=>s.ts>=mon.getTime()&&s.ts<sun.getTime()).forEach(s=>{
+    const d=new Date(s.ts),dayIdx=(d.getDay()+6)%7;
+    if(!done[dayIdx])done[dayIdx]=s;
   });return done;}
 function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.label;
   $('planNote').textContent=`${L.goalShort[profile.goal][lang]} · ${L.lvShort[profile.level][lang]} · ${profile.days} ${t('daysWk')} · ${locLabel()}`;
+  // week label
+  const mon=getWeekMon(weekOffset),sun=new Date(mon);sun.setDate(sun.getDate()+6);
+  const df={day:'2-digit',month:'2-digit'};const loc=lang==='vi'?'vi-VN':'en-GB';
+  const isCurrent=weekOffset===0;
+  $('weekLabel').innerHTML=isCurrent?`<b>${t('thisWeek')}</b><small>${mon.toLocaleDateString(loc,df)} – ${sun.toLocaleDateString(loc,df)}</small>`
+    :`${t('weekOf')}<br><b>${mon.toLocaleDateString(loc,df)} – ${sun.toLocaleDateString(loc,df)}</b>`;
   const g=$('grid');g.innerHTML='';const wkDone=thisWeekDone();let nextFound=false;
-  // find missed days this week (training days before today that aren't done or skipped)
   const today=(new Date().getDay()+6)%7;
-  // clean old skips from previous weeks
-  const mon=new Date();mon.setDate(mon.getDate()-((mon.getDay()+6)%7));mon.setHours(0,0,0,0);
-  // find skipped training days
   const missedDays=[];
-  pack.days.forEach((day,i)=>{if(day&&weekSkips.has(i))missedDays.push({idx:i,day});});
+  pack.days.forEach((day,i)=>{if(day&&weekSkips.has(i)&&isCurrent)missedDays.push({idx:i,day});});
   pack.days.forEach((day,i)=>{const card=document.createElement('div');card.className='day'+(day?'':' rest');
     if(!day){card.innerHTML=`<div class="day-top"><div class="daynum">•</div><div class="dmeta"><div class="dname" style="color:var(--muted)">${dayName(i)}</div></div></div>`;g.appendChild(card);return;}
-    const doneSession=wkDone[i];const isSkipped=weekSkips.has(i);
-    const isNext=!doneSession&&!isSkipped&&!nextFound;if(isNext)nextFound=true;
+    const doneSession=wkDone[i];const isSkipped=weekSkips.has(i)&&isCurrent;
+    const isNext=isCurrent&&!doneSession&&!isSkipped&&!nextFound;if(isNext)nextFound=true;
     const useKey=(makeupIdx!=null&&isNext)?pack.days[makeupIdx].key:day.key;
     const collapsed=!isNext;
     const exs=genDay(useKey);let rows='';
@@ -804,20 +819,18 @@ function renderWeek(){const pack=currentPack();$('planTitle').textContent=pack.l
       card.innerHTML=`<div class="day-top" data-toggle><div class="daynum">✕</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><span class="skipbadge">${t('skipped')}</span>${chevronSVG}</div>
         <div class="day-content">${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
     } else if(isNext){
-      // makeup banner if there are missed days
       let makeupBanner='';
       if(missedDays.length&&makeupIdx==null){
         makeupBanner=missedDays.map(m=>`<div class="makeup"><div class="mt">${t('skipAsk',m.day.name,dayName(m.idx))}</div>
-          <div class="mb"><button class="yes" data-makeup="${m.idx}">${t('skipYes')}</button><button class="no" data-nomakeup>${t('skipNo')}</button></div></div>`).join('');
-      }
+          <div class="mb"><button class="yes" data-makeup="${m.idx}">${t('skipYes')}</button><button class="no" data-nomakeup>${t('skipNo')}</button></div></div>`).join('');}
       const showName=makeupIdx!=null?pack.days[makeupIdx].name+' (tập bù)':day.name;
       card.className='day';
       card.innerHTML=`<div class="day-top"><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${showName}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div></div>
         ${makeupBanner}<div class="day-content">${rows}<div class="dayfoot" style="display:flex;gap:8px"><button class="btn finish" data-finish="${i}" style="flex:1">${t('finishBtn')}</button><button class="btn ghost" data-skip="${i}" style="flex:none;padding:14px 16px">${t('skipBtn')}</button></div></div>`;
     } else {
       card.className='day collapsed';
-      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div>${chevronSVG}</div>
-        <div class="day-content">${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
+      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div>${doneSession?'':`<div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div>`}${chevronSVG}</div>
+        <div class="day-content">${rows}${isCurrent?`<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div>`:''}</div>`;
     }
     g.appendChild(card);if(!doneSession&&!isSkipped)updateRing(i);});
 }
@@ -878,7 +891,9 @@ $('grid').addEventListener('click',function(e){
   const sc=e.target.closest('[data-setcancel]');if(sc){if(!_sdLock){_sdLock=true;try{cancelSet(sc.closest('.ex'),sc.closest('.setrow'));}catch(err){}setTimeout(()=>{_sdLock=false;},400);}e.preventDefault();return;}
 });
 $('grid').addEventListener('input',e=>{if(e.target.matches('[data-note]')){exNotes[e.target.closest('.ex').dataset.skey]=e.target.value;saveNotes();}});
-$('resetWeek').addEventListener('click',()=>{setState={};renderWeek()});
+$('resetWeek').addEventListener('click',()=>{setState={};weekOffset=0;renderWeek()});
+$('prevWeek').addEventListener('click',()=>{weekOffset--;renderWeek();window.scrollTo(0,0);});
+$('nextWeek').addEventListener('click',()=>{weekOffset++;renderWeek();window.scrollTo(0,0);});
 
 /* ===== scroll picker ===== */
 const PK_WEIGHTS_KG=[];
