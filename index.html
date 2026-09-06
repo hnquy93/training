@@ -462,7 +462,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='3.0';
+const APP_VERSION='3.1';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -782,7 +782,33 @@ function renderWeek(){
   pack.days.forEach((day,i)=>{if(day&&weekSkips.has(i)&&isCurrent)missedDays.push({idx:i,day,type:'skip'});});
   if(isCurrent)displaced.forEach(d=>missedDays.push({idx:d.fromIdx,day:{key:d.key,name:d.name},type:'displaced',fromDay:d.fromDay}));
   pack.days.forEach((day,i)=>{const card=document.createElement('div');card.className='day'+(day?'':' rest');
-    if(!day){card.innerHTML=`<div class="day-top"><div class="daynum">•</div><div class="dmeta"><div class="dname" style="color:var(--muted)">${dayName(i)}</div></div></div>`;g.appendChild(card);return;}
+    if(!day){
+      // check if this rest day should offer displaced/skipped makeup
+      if(isCurrent&&!nextFound&&missedDays.length){
+        nextFound=true;
+        let makeupBanner=missedDays.map((m,mi)=>{const label=m.type==='displaced'?t('skipAsk',m.day.name,m.fromDay):t('skipAsk',m.day.name,dayName(m.idx));
+          return `<div class="makeup"><div class="mt">${label}</div>
+          <div class="mb"><button class="yes" data-makeup="${m.type==='skip'?m.idx:'d'+mi}">${t('skipYes')}</button><button class="no" data-nomakeup>${t('skipNo')}</button></div></div>`;}).join('');
+        if(makeupIdx!=null){
+          const useKey2=pack.days[makeupIdx]?pack.days[makeupIdx].key:(displaced.find(d=>d.fromIdx===makeupIdx)||{}).key;
+          if(useKey2){const exs2=genDay(useKey2);let rows2='';
+            exs2.forEach(ex=>{const[lo,hi]=range(ex.k),tset=setsFor(ex.k),sg=suggest(ex.id),skey=i+':'+ex.id;
+              if(!setState[skey]||setState[skey].every(s=>!s.done)){setState[skey]=Array.from({length:tset},()=>({w:sg.w??'',r:sg.r,rpe:'',done:false}));}
+              const st=setState[skey],setsHTML=st.map((s,si)=>setRowHTML(s,si)).join('');
+              rows2+=`<div class="ex" data-d="${i}" data-id="${ex.id}" data-ov="${ex.ovKey}" data-slot="${ex.slot}" data-skey="${skey}">
+                ${gifHTML(ex.img,`data-open="${ex.id}"`)}
+                <div class="exbody"><div class="exhead"><div class="exname">${exName(ex.id)}</div><div class="tick" data-tick>${chk}</div></div>
+                <div class="exmeta"><span class="pill target">${tset} × ${lo}–${hi}</span><span class="pill eq">${eqLabel(ex.eq)}</span></div>
+                <div class="suggest"><span>${t('nextUp')}</span> <b>${sg.txt}</b></div>
+                <div class="sets">${setsHTML}</div>
+                <div class="setfoot"><button class="minibtn" data-addset>${t('addSet')}</button><button class="minibtn" data-drop>${t('dropSet')}</button></div></div></div>`;});
+            const showName2=pack.days[makeupIdx]?pack.days[makeupIdx].name+' (tập bù)':'(tập bù)';
+            card.innerHTML=`<div class="day-top"><div class="daynum" style="color:var(--blue)">+</div><div class="dmeta"><div class="dname">${showName2}</div><div class="dfocus">${dayName(i)} · tập bù</div></div></div>
+              <div class="day-content">${rows2}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
+            g.appendChild(card);return;}}
+        card.innerHTML=`<div class="day-top"><div class="daynum">•</div><div class="dmeta"><div class="dname" style="color:var(--muted)">${dayName(i)}</div></div></div>${makeupBanner}`;
+        g.appendChild(card);return;}
+      card.innerHTML=`<div class="day-top"><div class="daynum">•</div><div class="dmeta"><div class="dname" style="color:var(--muted)">${dayName(i)}</div></div></div>`;g.appendChild(card);return;}
     const doneSession=wkDone[i];const isSkipped=weekSkips.has(i)&&isCurrent;
     const isNext=isCurrent&&!doneSession&&!isSkipped&&!nextFound;if(isNext)nextFound=true;
     const useKey=(makeupIdx!=null&&isNext)?pack.days[makeupIdx].key:day.key;
@@ -971,9 +997,10 @@ $('rtPause').onclick=()=>{rest.paused=!rest.paused;paintRest();};
 $('rtSkip').onclick=stopRest;
 
 /* ===== finish session ===== */
-function finishSession(i){const pack=currentPack(),day=pack.days[i];if(!day)return;
-  const useKey=(makeupIdx!=null)?pack.days[makeupIdx].key:day.key;
-  const useName=(makeupIdx!=null)?pack.days[makeupIdx].name+' (tập bù)':day.name;
+function finishSession(i){const pack=currentPack(),day=pack.days[i];
+  const useKey=(makeupIdx!=null)?(pack.days[makeupIdx]?pack.days[makeupIdx].key:((displaced.find(d=>d.fromIdx===makeupIdx)||{}).key)):day?day.key:null;
+  if(!useKey)return;
+  const useName=(makeupIdx!=null)?(pack.days[makeupIdx]?pack.days[makeupIdx].name:'')+ ' (tập bù)':day?day.name:'';
   const exs=genDay(useKey),items=[];let volume=0,setCount=0,newPRs=[];
   document.querySelectorAll(`.ex[data-d="${i}"]`).forEach(el=>captureSets(el));
   exs.forEach(ex=>{const st=setState[i+':'+ex.id];if(!st)return;
@@ -989,9 +1016,11 @@ function finishSession(i){const pack=currentPack(),day=pack.days[i];if(!day)retu
   exs.forEach(ex=>delete setState[i+':'+ex.id]);delete sessionStart[i];stopRest();
   if(makeupIdx!=null){
     weekSkips.delete(makeupIdx);saveSkips();
-    // cascade: current day's original workout is displaced
+    // cascade: only displace if current day HAD an original workout
     const pack2=currentPack(),origDay=pack2.days[i];
     if(origDay){displaced.push({key:origDay.key,name:origDay.name,fromIdx:i,fromDay:dayName(i)});saveDisplaced();}
+    // also remove from displaced array if this was a displaced makeup
+    displaced=displaced.filter(d=>d.fromIdx!==makeupIdx);saveDisplaced();
     makeupIdx=null;
   }
   showSummary(sess,newPRs);renderWeek();renderStats();renderHistory();renderDeload();}
