@@ -462,7 +462,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='2.8';
+const APP_VERSION='2.9';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -679,6 +679,11 @@ function applyProfileChange(fromDate){
 }
 function checkPendingProfile(){try{const p=JSON.parse(store.get('sp_pending'));if(!p)return;
   if(new Date(p.from)<=new Date()){profile=p.profile;splitId=null;saveProfile();setState={};weekSkips=new Set();saveSkips();store.set('sp_pending','');}}catch{}}
+function cleanupWeekSkips(){
+  // auto-clear skips when a new week starts (Monday)
+  const lastClean=store.get('sp_skip_week')||'';
+  const mon=getWeekMon(0);const monKey=mon.toISOString().slice(0,10);
+  if(lastClean!==monKey){weekSkips=new Set();saveSkips();makeupIdx=null;store.set('sp_skip_week',monKey);}}
 function fillOnboard(){if(!profile)return;$('i_age').value=profile.age;$('i_height').value=profile.height;$('i_weight').value=profile.weight;
   const set=(n,v)=>{const box=document.querySelector(`[data-set="${n}"]`);if(box){box.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.v==String(v)));sel[n]=String(v);}};
   set('sex',profile.sex);set('activity',profile.activity);set('goal',profile.goal);set('level',profile.level);set('days',profile.days);
@@ -976,7 +981,12 @@ function finishSession(i){const pack=currentPack(),day=pack.days[i];if(!day)retu
   const sess={ts:Date.now(),key:useKey,name:useName,items,volume:Math.round(volume),setCount,dur};
   history.push(sess);saveHist();savePrs();
   exs.forEach(ex=>delete setState[i+':'+ex.id]);delete sessionStart[i];stopRest();
-  if(makeupIdx!=null){weekSkips.delete(makeupIdx);saveSkips();makeupIdx=null;}
+  if(makeupIdx!=null){
+    weekSkips.delete(makeupIdx);// made up the missed day
+    // cascade: current day's original workout is now displaced
+    const pack2=currentPack();if(pack2.days[i])weekSkips.add(i);// push original workout forward
+    saveSkips();makeupIdx=null;
+  }
   showSummary(sess,newPRs);renderWeek();renderStats();renderHistory();renderDeload();}
 function showSummary(s,newPRs){const dur=s.dur?mmss(s.dur):'—';
   $('sumBody').innerHTML=`<div class="sumhero"><div class="st">🎉</div><h3>${t('sumDone',s.name)}</h3>
@@ -1211,7 +1221,7 @@ async function checkUpdate(){try{
 async function requestPersist(){try{if(navigator.storage&&navigator.storage.persist){let p=navigator.storage.persisted?await navigator.storage.persisted():false;if(!p)p=await navigator.storage.persist();return !!p;}}catch{}return false;}
 function updatePersistUI(){const el=$('persistStat');if(!el)return;const msg=persistGranted===null?t('persistChk'):(persistGranted?t('persistOn'):t('persistOff'));el.textContent=t('persistTitle')+': '+msg;el.style.color=persistGranted?'var(--done)':'var(--muted)';}
 
-load();applyStatic();showVer();checkPendingProfile();
+load();applyStatic();showVer();checkPendingProfile();cleanupWeekSkips();
 requestPersist().then(p=>{persistGranted=p;updatePersistUI();});
 driveStartup();checkUpdate();
 if(profile){fillOnboard();startApp();}else{sel.equip=new Set(PRESETS.gym);paintEquip();paintPreset();}
