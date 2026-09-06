@@ -462,7 +462,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='2.9';
+const APP_VERSION='3.0';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -600,7 +600,7 @@ const exCount=()=>profile.level==='beginner'?5:(profile.level==='advanced'?7:6);
 const hasEq=eq=>eq==='bw'||profile.equip.includes(eq);
 
 /* ===== state ===== */
-let profile=null,splitId=null,logs={},overrides={},sel={equip:new Set()},swapCtx=null,setState={},rest={id:null,rem:0,total:0,paused:false},history=[],prs={},body=[],sessionStart={},chartExId=null,superLinks=new Set(),exNotes={},deloadOn=false,notifyTimers=[],persistGranted=null,weekSkips=new Set(),makeupIdx=null,weekOffset=0;
+let profile=null,splitId=null,logs={},overrides={},sel={equip:new Set()},swapCtx=null,setState={},rest={id:null,rem:0,total:0,paused:false},history=[],prs={},body=[],sessionStart={},chartExId=null,superLinks=new Set(),exNotes={},deloadOn=false,notifyTimers=[],persistGranted=null,weekSkips=new Set(),makeupIdx=null,weekOffset=0,displaced=[];
 const $=id=>document.getElementById(id);
 const chk='<svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg>';
 const fmt=n=>Number.isInteger(+n)?+n:(+n).toFixed(1);
@@ -616,6 +616,7 @@ function load(){
   try{superLinks=new Set(JSON.parse(store.get('sp_super'))||[])}catch{superLinks=new Set()}
   try{exNotes=JSON.parse(store.get('sp_notes'))||{}}catch{exNotes={}}
   try{weekSkips=new Set(JSON.parse(store.get('sp_skips'))||[])}catch{weekSkips=new Set()}
+  try{displaced=JSON.parse(store.get('sp_displaced'))||[]}catch{displaced=[]}
   deloadOn=store.get('sp_deload')==='1';splitId=store.get('sp_split')||null;
 }
 const saveProfile=()=>store.set('sp_profile',JSON.stringify(profile));
@@ -627,6 +628,7 @@ const saveBody=()=>store.set('sp_body',JSON.stringify(body));
 const saveSuper=()=>store.set('sp_super',JSON.stringify([...superLinks]));
 const saveNotes=()=>store.set('sp_notes',JSON.stringify(exNotes));
 const saveSkips=()=>store.set('sp_skips',JSON.stringify([...weekSkips]));
+const saveDisplaced=()=>store.set('sp_displaced',JSON.stringify(displaced));
 
 /* ===== onboarding ===== */
 document.querySelectorAll('#onboard .chips[data-set]').forEach(box=>box.addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b||b.disabled)return;box.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c===b));sel[box.dataset.set]=b.dataset.v;}));
@@ -683,7 +685,7 @@ function cleanupWeekSkips(){
   // auto-clear skips when a new week starts (Monday)
   const lastClean=store.get('sp_skip_week')||'';
   const mon=getWeekMon(0);const monKey=mon.toISOString().slice(0,10);
-  if(lastClean!==monKey){weekSkips=new Set();saveSkips();makeupIdx=null;store.set('sp_skip_week',monKey);}}
+  if(lastClean!==monKey){weekSkips=new Set();saveSkips();displaced=[];saveDisplaced();makeupIdx=null;store.set('sp_skip_week',monKey);}}
 function fillOnboard(){if(!profile)return;$('i_age').value=profile.age;$('i_height').value=profile.height;$('i_weight').value=profile.weight;
   const set=(n,v)=>{const box=document.querySelector(`[data-set="${n}"]`);if(box){box.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.v==String(v)));sel[n]=String(v);}};
   set('sex',profile.sex);set('activity',profile.activity);set('goal',profile.goal);set('level',profile.level);set('days',profile.days);
@@ -777,7 +779,8 @@ function renderWeek(){
   const g=$('grid');g.innerHTML='';const wkDone=thisWeekDone();let nextFound=false;
   const today=(new Date().getDay()+6)%7;
   const missedDays=[];
-  pack.days.forEach((day,i)=>{if(day&&weekSkips.has(i)&&isCurrent)missedDays.push({idx:i,day});});
+  pack.days.forEach((day,i)=>{if(day&&weekSkips.has(i)&&isCurrent)missedDays.push({idx:i,day,type:'skip'});});
+  if(isCurrent)displaced.forEach(d=>missedDays.push({idx:d.fromIdx,day:{key:d.key,name:d.name},type:'displaced',fromDay:d.fromDay}));
   pack.days.forEach((day,i)=>{const card=document.createElement('div');card.className='day'+(day?'':' rest');
     if(!day){card.innerHTML=`<div class="day-top"><div class="daynum">•</div><div class="dmeta"><div class="dname" style="color:var(--muted)">${dayName(i)}</div></div></div>`;g.appendChild(card);return;}
     const doneSession=wkDone[i];const isSkipped=weekSkips.has(i)&&isCurrent;
@@ -825,7 +828,7 @@ function renderWeek(){
             ${it.note?`<div class="prevperf" style="margin-top:6px">"${it.note}"</div>`:''}
           </div></div>`;}).join('');
       card.className='day completed collapsed';
-      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
+      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--done)">✓</div><div class="dmeta"><div class="dname">${ds.name||day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div>
         <div class="donesummary">${ds.setCount} set · ${fmt(toDisplay(ds.volume))} ${wUnit()}${ds.dur?' · '+mmss(ds.dur):''}</div></div><span class="donebadge">${t('done')}</span>${chevronSVG}</div>
         <div class="day-content">${doneRows}</div>`;
     } else if(isSkipped){
@@ -835,8 +838,9 @@ function renderWeek(){
     } else if(isNext){
       let makeupBanner='';
       if(missedDays.length&&makeupIdx==null){
-        makeupBanner=missedDays.map(m=>`<div class="makeup"><div class="mt">${t('skipAsk',m.day.name,dayName(m.idx))}</div>
-          <div class="mb"><button class="yes" data-makeup="${m.idx}">${t('skipYes')}</button><button class="no" data-nomakeup>${t('skipNo')}</button></div></div>`).join('');}
+        makeupBanner=missedDays.map((m,mi)=>{const label=m.type==='displaced'?t('skipAsk',m.day.name,m.fromDay):t('skipAsk',m.day.name,dayName(m.idx));
+          return `<div class="makeup"><div class="mt">${label}</div>
+          <div class="mb"><button class="yes" data-makeup="${m.type==='skip'?m.idx:'d'+mi}">${t('skipYes')}</button><button class="no" data-nomakeup>${t('skipNo')}</button></div></div>`;}).join('');}
       const showName=makeupIdx!=null?pack.days[makeupIdx].name+' (tập bù)':day.name;
       card.className='day';
       card.innerHTML=`<div class="day-top"><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${showName}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div></div>
@@ -892,7 +896,9 @@ $('grid').addEventListener('click',e=>{
   const pk=e.target.closest('[data-openpk]');if(pk){openPicker(pk.closest('.ex'),pk.closest('.setrow'),pk.dataset.openpk);return;}
   const fin=e.target.closest('[data-finish]');if(fin){finishSession(+fin.dataset.finish);return;}
   const skip=e.target.closest('[data-skip]');if(skip){const idx=+skip.dataset.skip;weekSkips.add(idx);saveSkips();makeupIdx=null;setState={};renderWeek();return;}
-  const mu=e.target.closest('[data-makeup]');if(mu){makeupIdx=+mu.dataset.makeup;setState={};renderWeek();return;}
+  const mu=e.target.closest('[data-makeup]');if(mu){const val=mu.dataset.makeup;
+    if(val.startsWith('d')){/* displaced entry */const di=+val.slice(1);const d=displaced[di];if(d){makeupIdx=d.fromIdx;displaced.splice(di,1);saveDisplaced();}}
+    else{makeupIdx=+val;}setState={};renderWeek();return;}
   const nomu=e.target.closest('[data-nomakeup]');if(nomu){nomu.closest('.makeup').remove();return;}
   const tick=e.target.closest('[data-tick]');if(tick){toggleAll(tick.closest('.ex'));return;}});
 /* setdone + setcancel: touchstart for instant iOS response + click for desktop */
@@ -982,10 +988,11 @@ function finishSession(i){const pack=currentPack(),day=pack.days[i];if(!day)retu
   history.push(sess);saveHist();savePrs();
   exs.forEach(ex=>delete setState[i+':'+ex.id]);delete sessionStart[i];stopRest();
   if(makeupIdx!=null){
-    weekSkips.delete(makeupIdx);// made up the missed day
-    // cascade: current day's original workout is now displaced
-    const pack2=currentPack();if(pack2.days[i])weekSkips.add(i);// push original workout forward
-    saveSkips();makeupIdx=null;
+    weekSkips.delete(makeupIdx);saveSkips();
+    // cascade: current day's original workout is displaced
+    const pack2=currentPack(),origDay=pack2.days[i];
+    if(origDay){displaced.push({key:origDay.key,name:origDay.name,fromIdx:i,fromDay:dayName(i)});saveDisplaced();}
+    makeupIdx=null;
   }
   showSummary(sess,newPRs);renderWeek();renderStats();renderHistory();renderDeload();}
 function showSummary(s,newPRs){const dur=s.dur?mmss(s.dur):'—';
@@ -1129,7 +1136,7 @@ function scheduleNotifs(){notifyTimers.forEach(clearTimeout);notifyTimers=[];con
     const ms=target-now;if(ms<6048e5)notifyTimers.push(setTimeout(()=>{try{new Notification('MY TRAINING 💪',{body:(lang==='vi'?'Tới giờ tập: ':'Time to train: ')+d.name});}catch{}},ms));});}
 
 /* ===== Cloud sync via Google Apps Script ===== */
-const SYNC_KEYS=['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit','sp_skips'];
+const SYNC_KEYS=['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit','sp_skips','sp_displaced'];
 let cloudUrl='',cloudSecret='',cloudOn=false,cloudDirty=false,cloudApplying=false,pushTimer=null;
 function collectData(){const d={};SYNC_KEYS.forEach(function(k){const v=store.get(k);if(v!=null)d[k]=v;});return d;}
 function applyData(d){cloudApplying=true;Object.keys(d||{}).forEach(function(k){store.set(k,d[k]);});cloudApplying=false;}
@@ -1160,7 +1167,7 @@ async function driveStartup(){cloudUrl=store.get('sp_gas_url')||'';cloudSecret=s
   try{const j=await gasLoad();if(j&&j.data&&String(j.mtime)!==store.get('sp_cloud_mtime')&&!cloudDirty){applyData(j.data);store.set('sp_cloud_mtime',String(j.mtime));reloadAfterPull();}}catch(e){}}
 
 /* ===== backup ===== */
-$('exportBtn').addEventListener('click',()=>{const data={};['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit','sp_skips'].forEach(k=>{const v=store.get(k);if(v)data[k]=v;});const blob=new Blob([JSON.stringify(data)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='my-training-backup.json';a.click();URL.revokeObjectURL(a.href);});
+$('exportBtn').addEventListener('click',()=>{const data={};['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit','sp_skips','sp_displaced'].forEach(k=>{const v=store.get(k);if(v)data[k]=v;});const blob=new Blob([JSON.stringify(data)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='my-training-backup.json';a.click();URL.revokeObjectURL(a.href);});
 $('importBtn').addEventListener('click',()=>$('importFile').click());
 $('importFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const data=JSON.parse(rd.result);Object.keys(data).forEach(k=>store.set(k,data[k]));load();lang=store.get('sp_lang')||lang;applyStatic();fillOnboard();startApp();alert(t('restored'));}catch{alert(t('badFile'));}};rd.readAsText(f);});
 
