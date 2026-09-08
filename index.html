@@ -464,7 +464,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='3.3';
+const APP_VERSION='3.4';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -524,6 +524,7 @@ const L={
  applyPick:{vi:'Chọn ngày khác',en:'Pick another date'},
  applyCancel:{vi:'Hủy thay đổi',en:'Cancel changes'},
  swapDay:{vi:'Đổi ngày',en:'Swap day'},swapDayWith:{vi:'Đổi với ngày nào?',en:'Swap with which day?'},
+ unskip:{vi:'Bỏ đánh dấu',en:'Unskip'},pickMakeupDay:{vi:'Chọn ngày tập bù',en:'Pick makeup day'},pickDayTitle:{vi:'Tập bù vào ngày nào?',en:'Make up on which day?'},dayHasWorkout:{vi:'(đã có lịch — sẽ đẩy tiếp)',en:'(has workout — will cascade)'},dayFree:{vi:'(trống)',en:'(free)'},
  addEx:{vi:'+ Thêm bài',en:'+ Add exercise'},removeEx:{vi:'Bỏ bài',en:'Remove'},removeExAsk:{vi:'Bỏ bài này khỏi buổi tập?',en:'Remove this exercise?'},
  fuelTitle:{vi:'Dinh dưỡng',en:'Nutrition'},fuelSub:{vi:'Ước tính theo hồ sơ & mục tiêu',en:'Estimated from profile & goal'},perDay:{vi:'kcal / ngày',en:'kcal / day'},protein:{vi:'Đạm (Protein)',en:'Protein'},carb:{vi:'Tinh bột (Carb)',en:'Carbs'},fat:{vi:'Chất béo (Fat)',en:'Fat'},mealsTitle:{vi:'Gợi ý bữa ăn',en:'Meal suggestions'},
  nutNote:{vi:'Ước tính tham khảo (Mifflin-St Jeor), không phải lời khuyên y tế. Sau 2–3 tuần nếu cân nặng không đổi theo hướng mong muốn thì chỉnh ±200 kcal.',en:'Reference estimate (Mifflin-St Jeor), not medical advice. After 2–3 weeks, adjust by ±200 kcal if weight isn’t moving as intended.'},
@@ -622,6 +623,7 @@ function load(){
   try{weekSkips=new Set(JSON.parse(store.get('sp_skips'))||[])}catch{weekSkips=new Set()}
   try{displaced=JSON.parse(store.get('sp_displaced'))||[]}catch{displaced=[]}
   try{daySwaps=JSON.parse(store.get('sp_dayswap'))||{}}catch{daySwaps={}}
+  try{makeupOn=JSON.parse(store.get('sp_makeupon'))||{}}catch{makeupOn={}}
   try{dayExtra=JSON.parse(store.get('sp_dayex'))||{}}catch{dayExtra={}}
   try{dayRemoved=JSON.parse(store.get('sp_dayrem'))||{}}catch{dayRemoved={}}
   deloadOn=store.get('sp_deload')==='1';splitId=store.get('sp_split')||null;
@@ -695,7 +697,7 @@ function cleanupWeekSkips(){
   // auto-clear skips when a new week starts (Monday)
   const lastClean=store.get('sp_skip_week')||'';
   const mon=getWeekMon(0);const monKey=mon.toISOString().slice(0,10);
-  if(lastClean!==monKey){weekSkips=new Set();saveSkips();displaced=[];saveDisplaced();makeupIdx=null;store.set('sp_skip_week',monKey);}}
+  if(lastClean!==monKey){weekSkips=new Set();saveSkips();displaced=[];saveDisplaced();makeupOn={};store.set('sp_makeupon','{}');makeupIdx=null;store.set('sp_skip_week',monKey);}}
 function fillOnboard(){if(!profile)return;$('i_age').value=profile.age;$('i_height').value=profile.height;$('i_weight').value=profile.weight;
   const set=(n,v)=>{const box=document.querySelector(`[data-set="${n}"]`);if(box){box.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.v==String(v)));sel[n]=String(v);}};
   set('sex',profile.sex);set('activity',profile.activity);set('goal',profile.goal);set('level',profile.level);set('days',profile.days);
@@ -804,6 +806,26 @@ function renderWeek(){
   if(isCurrent)displaced.forEach(d=>missedDays.push({idx:d.fromIdx,day:{key:d.key,name:d.name},type:'displaced',fromDay:d.fromDay}));
   pack.days.forEach((day,i)=>{const card=document.createElement('div');card.className='day'+(day?'':' rest');
     if(!day){
+      // scheduled makeup on this rest day?
+      const sRef=isCurrent?makeupOn[i]:null;
+      if(sRef){let sk=null,sn=null;
+        if(sRef.startsWith('s')){const s2=+sRef.slice(1);if(pack.days[s2]){sk=pack.days[s2].key;sn=pack.days[s2].name;}}
+        else if(sRef.startsWith('d')){const d2=+sRef.slice(1);const dd=displaced[d2];if(dd){sk=dd.key;sn=dd.name;}}
+        if(sk){const exs3=genDay(sk);let rows3='';
+          exs3.forEach(ex=>{const[lo,hi]=range(ex.k),tset=setsFor(ex.k),sg=suggest(ex.id),skey=i+':'+ex.id;
+            if(!setState[skey]||setState[skey].every(s=>!s.done)){setState[skey]=Array.from({length:tset},()=>({w:sg.w??'',r:sg.r,rpe:'',done:false}));}
+            const st=setState[skey],setsHTML=st.map((s,si)=>setRowHTML(s,si)).join('');
+            rows3+=`<div class="ex" data-d="${i}" data-id="${ex.id}" data-ov="${ex.ovKey}" data-slot="${ex.slot}" data-skey="${skey}">
+              ${gifHTML(ex.img,`data-open="${ex.id}"`)}
+              <div class="exbody"><div class="exhead"><div class="exname">${exName(ex.id)}</div><div class="tick" data-tick>${chk}</div></div>
+              <div class="exmeta"><span class="pill target">${tset} × ${lo}–${hi}</span><span class="pill eq">${eqLabel(ex.eq)}</span><button class="minibtn" data-swap><svg viewBox="0 0 24 24"><path d="M4 7h13l-3-3M20 17H7l3 3"/></svg>${t('swapBtn')}</button></div>
+              <div class="suggest"><span>${t('nextUp')}</span> <b>${sg.txt}</b></div>
+              <div class="sets">${setsHTML}</div>
+              <div class="setfoot"><button class="minibtn" data-addset>${t('addSet')}</button><button class="minibtn" data-drop>${t('dropSet')}</button><button class="minibtn" data-rest="${restSec(ex.k)}">${restSec(ex.k)}s</button></div></div></div>`;});
+          card.innerHTML=`<div class="day-top"><div class="daynum" style="color:var(--blue)">+</div><div class="dmeta"><div class="dname">${sn} (tập bù)</div><div class="dfocus">${dayName(i)} · tập bù</div></div>
+            <button class="minibtn" data-cancelmakeup="${i}">✕</button></div>
+            <div class="day-content">${rows3}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
+          g.appendChild(card);return;}}
       // check if this rest day should offer displaced/skipped makeup
       if(isCurrent&&!nextFound&&missedDays.length){
         nextFound=true;
@@ -831,8 +853,15 @@ function renderWeek(){
         g.appendChild(card);return;}
       card.innerHTML=`<div class="day-top"><div class="daynum">•</div><div class="dmeta"><div class="dname" style="color:var(--muted)">${dayName(i)}</div></div></div>`;g.appendChild(card);return;}
     const doneSession=wkDone[i];const isSkipped=weekSkips.has(i)&&isCurrent;
-    const isNext=isCurrent&&!doneSession&&!isSkipped&&!nextFound;if(isNext)nextFound=true;
-    const useKey=(makeupIdx!=null&&isNext)?pack.days[makeupIdx].key:day.key;
+    // check if this day has a scheduled makeup
+    const schedRef=isCurrent?makeupOn[i]:null;
+    let schedKey=null,schedName=null;
+    if(schedRef){
+      if(schedRef.startsWith('s')){const si2=+schedRef.slice(1);if(pack.days[si2]){schedKey=pack.days[si2].key;schedName=pack.days[si2].name;}}
+      else if(schedRef.startsWith('d')){const di2=+schedRef.slice(1);const dd=displaced[di2];if(dd){schedKey=dd.key;schedName=dd.name;}}
+    }
+    const isNext=isCurrent&&!doneSession&&!isSkipped&&(!!schedKey||!nextFound);if(isNext&&!schedKey)nextFound=true;
+    const useKey=schedKey||((makeupIdx!=null&&isNext)?pack.days[makeupIdx].key:day.key);
     const collapsed=!isNext;
     const exs=genDay(useKey);let rows='';
     exs.forEach(ex=>{const[lo,hi]=range(ex.k),tset=setsFor(ex.k),sg=suggest(ex.id),o=orm(ex.id),skey=i+':'+ex.id,ss=superLinks.has(ex.ovKey);
@@ -881,15 +910,19 @@ function renderWeek(){
         <div class="day-content">${doneRows}</div>`;
     } else if(isSkipped){
       card.className='day skipped collapsed';
-      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum">✕</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div><span class="skipbadge">${t('skipped')}</span>${chevronSVG}</div>
-        <div class="day-content">${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
+      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum">✕</div><div class="dmeta"><div class="dname">${day.name}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div>
+        <div style="display:flex;gap:4px;align-items:center"><button class="minibtn" data-unskip="${i}" title="${t('unskip')}">↺</button><span class="skipbadge">${t('skipped')}</span>${chevronSVG}</div></div>
+        <div class="day-content">
+          <div class="daybtn"><button class="minibtn" data-unskip="${i}">↺ ${t('unskip')}</button><button class="minibtn" data-pickday="s${i}">📅 ${t('pickMakeupDay')}</button></div>
+          ${rows}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
     } else if(isNext){
       let makeupBanner='';
       if(missedDays.length&&makeupIdx==null){
         makeupBanner=missedDays.map((m,mi)=>{const label=m.type==='displaced'?t('skipAsk',m.day.name,m.fromDay):t('skipAsk',m.day.name,dayName(m.idx));
+          const mid=m.type==='skip'?m.idx:'d'+mi;
           return `<div class="makeup"><div class="mt">${label}</div>
-          <div class="mb"><button class="yes" data-makeup="${m.type==='skip'?m.idx:'d'+mi}">${t('skipYes')}</button><button class="no" data-nomakeup>${t('skipNo')}</button></div></div>`;}).join('');}
-      const showName=makeupIdx!=null?pack.days[makeupIdx].name+' (tập bù)':day.name;
+          <div class="mb"><button class="yes" data-makeup="${mid}">${t('skipYes')}</button><button class="no" data-pickday="${m.type==='skip'?'s'+m.idx:'d'+mi}">📅</button><button class="no" data-nomakeup>${t('skipNo')}</button></div></div>`;}).join('');}
+      const showName=schedName?schedName+' (tập bù)':(makeupIdx!=null?pack.days[makeupIdx].name+' (tập bù)':day.name);
       card.className='day';
       card.innerHTML=`<div class="day-top"><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${showName}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div>
         <div style="display:flex;gap:4px;align-items:center"><button class="minibtn" data-addex="${i}" title="${t('addEx')}">＋</button><button class="minibtn" data-swapday="${i}" title="${t('swapDay')}">↕</button><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div></div></div>
@@ -943,6 +976,9 @@ $('grid').addEventListener('click',e=>{
   const as=e.target.closest('[data-addset]');if(as){addSet(as.closest('.ex'),false);return;}
   const dp=e.target.closest('[data-drop]');if(dp){addSet(dp.closest('.ex'),true);return;}
   const nt=e.target.closest('[data-notetgl]');if(nt){toggleNote(nt.closest('.ex'));return;}
+  const cm=e.target.closest('[data-cancelmakeup]');if(cm){e.stopPropagation();delete makeupOn[+cm.dataset.cancelmakeup];store.set('sp_makeupon',JSON.stringify(makeupOn));setState={};renderWeek();return;}
+  const unsk=e.target.closest('[data-unskip]');if(unsk){e.stopPropagation();const idx=+unsk.dataset.unskip;weekSkips.delete(idx);saveSkips();setState={};renderWeek();return;}
+  const pd=e.target.closest('[data-pickday]');if(pd){e.stopPropagation();openPickDay(pd.dataset.pickday);return;}
   const swday=e.target.closest('[data-swapday]');if(swday){e.stopPropagation();openDaySwap(+swday.dataset.swapday);return;}
   const addex=e.target.closest('[data-addex]');if(addex){e.stopPropagation();openAddEx(+addex.dataset.addex);return;}
   const tgl=e.target.closest('[data-toggle]');if(tgl){tgl.closest('.day').classList.toggle('collapsed');return;}
@@ -1026,9 +1062,12 @@ $('rtSkip').onclick=stopRest;
 
 /* ===== finish session ===== */
 function finishSession(i){const pack=currentPack(),day=pack.days[i];
-  const useKey=(makeupIdx!=null)?(pack.days[makeupIdx]?pack.days[makeupIdx].key:((displaced.find(d=>d.fromIdx===makeupIdx)||{}).key)):day?day.key:null;
+  const schedRef=makeupOn[i];let schedKey=null,schedName=null;
+  if(schedRef){if(schedRef.startsWith('s')){const si2=+schedRef.slice(1);if(pack.days[si2]){schedKey=pack.days[si2].key;schedName=pack.days[si2].name;}}
+    else if(schedRef.startsWith('d')){const di2=+schedRef.slice(1);const dd=displaced[di2];if(dd){schedKey=dd.key;schedName=dd.name;}}}
+  const useKey=schedKey||((makeupIdx!=null)?(pack.days[makeupIdx]?pack.days[makeupIdx].key:((displaced.find(d=>d.fromIdx===makeupIdx)||{}).key)):day?day.key:null);
   if(!useKey)return;
-  const useName=(makeupIdx!=null)?(pack.days[makeupIdx]?pack.days[makeupIdx].name:'')+ ' (tập bù)':day?day.name:'';
+  const useName=schedName?schedName+' (tập bù)':((makeupIdx!=null)?(pack.days[makeupIdx]?pack.days[makeupIdx].name:'')+' (tập bù)':day?day.name:'');
   const exs=genDay(useKey),items=[];let volume=0,setCount=0,newPRs=[];
   document.querySelectorAll(`.ex[data-d="${i}"]`).forEach(el=>captureSets(el));
   exs.forEach(ex=>{const st=setState[i+':'+ex.id];if(!st)return;
@@ -1042,6 +1081,14 @@ function finishSession(i){const pack=currentPack(),day=pack.days[i];
   const sess={ts:Date.now(),key:useKey,name:useName,items,volume:Math.round(volume),setCount,dur};
   history.push(sess);saveHist();savePrs();
   exs.forEach(ex=>delete setState[i+':'+ex.id]);delete sessionStart[i];stopRest();
+  if(schedRef){
+    // clear scheduled makeup, remove source
+    if(schedRef.startsWith('s')){weekSkips.delete(+schedRef.slice(1));saveSkips();}
+    else if(schedRef.startsWith('d')){displaced.splice(+schedRef.slice(1),1);saveDisplaced();}
+    delete makeupOn[i];store.set('sp_makeupon',JSON.stringify(makeupOn));
+    // cascade original workout of this day if it had one
+    const od=pack.days[i];if(od){displaced.push({key:od.key,name:od.name,fromIdx:i,fromDay:dayName(i)});saveDisplaced();}
+  }
   if(makeupIdx!=null){
     weekSkips.delete(makeupIdx);saveSkips();
     // cascade: only displace if current day HAD an original workout
@@ -1106,6 +1153,17 @@ function openSwap(slot,ovKey,curId){swapCtx={slot,ovKey};
     ${gifHTML(x.img)}<div class="st"><b>${exName(x.id)}</b><small>${eqLabel(x.eq)} · ${x.k==='c'?t('compound'):t('isolation')}</small></div>
     ${x.id===curId?`<span class="cur">${t('using')}</span>`:''}</button>`).join('');
   $('swap').classList.remove('hide');}
+/* ===== pick makeup day ===== */
+let makeupOn={};// {dayIdx: makeupRef}
+function openPickDay(ref){
+  const pack=currentPack(),wkDone=thisWeekDone();
+  $('swapTitle').textContent=t('pickDayTitle');$('swapHint').textContent='';
+  $('swapList').innerHTML=pack.days.map((d,i)=>{
+    if(wkDone[i])return '';// already trained that day
+    const label=d?`${d.name} ${t('dayHasWorkout')}`:t('dayFree');
+    return `<button class="swapopt" data-makeupon="${ref}:${i}"><div class="st"><b>${dayName(i)}</b><small>${label}</small></div></button>`;}).join('');
+  $('swap').classList.remove('hide');}
+
 /* ===== swap day + add exercise ===== */
 function openDaySwap(fromIdx){
   const pack=currentPack();
@@ -1127,6 +1185,10 @@ function openAddEx(dayIdx){
     ${gifHTML(x.img)}<div class="st"><b>${exName(x.id)}</b><small>${gName(x.g)} · ${eqLabel(x.eq)}</small></div>${x.inUse?'<span class="cur">✓</span>':''}</button>`).join('');
   $('swap').classList.remove('hide');}
 $('swapList').addEventListener('click',e=>{
+  const mo=e.target.closest('[data-makeupon]');
+  if(mo){const parts=mo.dataset.makeupon.split(':'),ref=parts[0],targetDay=+parts[1];
+    makeupOn[targetDay]=ref;store.set('sp_makeupon',JSON.stringify(makeupOn));
+    $('swap').classList.add('hide');setState={};renderWeek();return;}
   const ds=e.target.closest('[data-dayswap]');
   if(ds){const[a,b]=ds.dataset.dayswap.split(':').map(Number);daySwaps[a]=b;daySwaps[b]=a;saveDaySwaps();$('swap').classList.add('hide');setState={};renderWeek();return;}
   const ae=e.target.closest('[data-addexto]');
@@ -1218,7 +1280,7 @@ function scheduleNotifs(){notifyTimers.forEach(clearTimeout);notifyTimers=[];con
     const ms=target-now;if(ms<6048e5)notifyTimers.push(setTimeout(()=>{try{new Notification('MY TRAINING 💪',{body:(lang==='vi'?'Tới giờ tập: ':'Time to train: ')+d.name});}catch{}},ms));});}
 
 /* ===== Cloud sync via Google Apps Script ===== */
-const SYNC_KEYS=['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit','sp_skips','sp_displaced','sp_dayswap','sp_dayex','sp_dayrem'];
+const SYNC_KEYS=['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit','sp_skips','sp_displaced','sp_dayswap','sp_dayex','sp_dayrem','sp_makeupon'];
 let cloudUrl='',cloudSecret='',cloudOn=false,cloudDirty=false,cloudApplying=false,pushTimer=null;
 function collectData(){const d={};SYNC_KEYS.forEach(function(k){const v=store.get(k);if(v!=null)d[k]=v;});return d;}
 function applyData(d){cloudApplying=true;Object.keys(d||{}).forEach(function(k){store.set(k,d[k]);});cloudApplying=false;}
@@ -1249,7 +1311,7 @@ async function driveStartup(){cloudUrl=store.get('sp_gas_url')||'';cloudSecret=s
   try{const j=await gasLoad();if(j&&j.data&&String(j.mtime)!==store.get('sp_cloud_mtime')&&!cloudDirty){applyData(j.data);store.set('sp_cloud_mtime',String(j.mtime));reloadAfterPull();}}catch(e){}}
 
 /* ===== backup ===== */
-$('exportBtn').addEventListener('click',()=>{const data={};['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit','sp_skips','sp_displaced','sp_dayswap','sp_dayex','sp_dayrem'].forEach(k=>{const v=store.get(k);if(v)data[k]=v;});const blob=new Blob([JSON.stringify(data)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='my-training-backup.json';a.click();URL.revokeObjectURL(a.href);});
+$('exportBtn').addEventListener('click',()=>{const data={};['sp_profile','sp_logs','sp_over','sp_split','sp_hist','sp_prs','sp_body','sp_super','sp_notes','sp_deload','sp_lang','sp_unit','sp_skips','sp_displaced','sp_dayswap','sp_dayex','sp_dayrem','sp_makeupon'].forEach(k=>{const v=store.get(k);if(v)data[k]=v;});const blob=new Blob([JSON.stringify(data)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='my-training-backup.json';a.click();URL.revokeObjectURL(a.href);});
 $('importBtn').addEventListener('click',()=>$('importFile').click());
 $('importFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const data=JSON.parse(rd.result);Object.keys(data).forEach(k=>store.set(k,data[k]));load();lang=store.get('sp_lang')||lang;applyStatic();fillOnboard();startApp();alert(t('restored'));}catch{alert(t('badFile'));}};rd.readAsText(f);});
 
