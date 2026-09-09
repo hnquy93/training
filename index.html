@@ -334,6 +334,7 @@
           <button class="chip" data-eq="bar" data-i18n="eqBar">Xà đơn</button><button class="chip" disabled aria-pressed="true" data-i18n2="eqBwAlways"></button></div></div>
       <button class="btn" id="genBtn" data-i18n="genBtn">Tạo giáo án của tôi →</button>
       <p class="note" id="obErr" style="color:var(--pink)"></p>
+      <button class="btn ghost" id="emergencyReset" style="width:100%;margin-top:20px;color:var(--pink);border-color:var(--pink)" onclick="if(confirm('Xóa toàn bộ dữ liệu app? / Clear all app data?')){try{localStorage.clear()}catch{}try{caches.keys().then(k=>k.forEach(n=>caches.delete(n)))}catch{}location.reload();}">⚠ Emergency Reset</button>
     </div>
   </section>
 
@@ -464,7 +465,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='3.6';
+const APP_VERSION='3.7';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -1364,25 +1365,32 @@ if(window.visualViewport){window.visualViewport.addEventListener('resize',functi
 
 /* ===== auto-update: check version.json on startup ===== */
 async function checkUpdate(){try{
+  if(sessionStorage.getItem('mt_upd'))return;
   const r=await fetch('./version.json?_='+Date.now(),{cache:'no-store'});if(!r.ok)return;
   const j=await r.json();
   if(j.version&&j.version!==APP_VERSION){
-    // new version deployed — clear SW cache and reload
+    sessionStorage.setItem('mt_upd','1');
     if('caches' in window){const keys=await caches.keys();for(const k of keys)await caches.delete(k);}
     if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration){const reg=await navigator.serviceWorker.getRegistration();if(reg)await reg.update();}
-    $('appVer').innerHTML=`<b style="color:var(--done)">${t('updateReady')}</b>`;
-    setTimeout(()=>location.reload(true),1500);
-  }}catch(e){/* version.json not found = OK, skip */}}
+    try{$('appVer').innerHTML=`<b style="color:var(--done)">${t('updateReady')}</b>`;}catch{}
+    setTimeout(()=>{sessionStorage.removeItem('mt_upd');location.reload(true);},1500);
+  }}catch(e){}}
 
 /* ===== persistent storage ===== */
 async function requestPersist(){try{if(navigator.storage&&navigator.storage.persist){let p=navigator.storage.persisted?await navigator.storage.persisted():false;if(!p)p=await navigator.storage.persist();return !!p;}}catch{}return false;}
 function updatePersistUI(){const el=$('persistStat');if(!el)return;const msg=persistGranted===null?t('persistChk'):(persistGranted?t('persistOn'):t('persistOff'));el.textContent=t('persistTitle')+': '+msg;el.style.color=persistGranted?'var(--done)':'var(--muted)';}
 
+try{
 load();applyStatic();showVer();checkPendingProfile();cleanupWeekSkips();
-requestPersist().then(p=>{persistGranted=p;updatePersistUI();});
-driveStartup();checkUpdate();
-if(profile){fillOnboard();try{startApp();}catch(e){console.error('init error:',e);$('onboard').classList.add('hide');$('app').classList.remove('hide');$('tabbar').classList.remove('hide');}}
+requestPersist().then(p=>{persistGranted=p;try{updatePersistUI();}catch{}});
+try{driveStartup();}catch{}
+try{checkUpdate();}catch{}
+if(profile){fillOnboard();try{startApp();}catch(e){console.error('startApp:',e);$('onboard').classList.add('hide');$('app').classList.remove('hide');$('tabbar').classList.remove('hide');}}
 else{$('obBack').classList.add('hide');sel.equip=new Set(PRESETS.gym);paintEquip();paintPreset();}
+}catch(e){console.error('INIT CRASH:',e);
+  // emergency: just show whatever we can
+  try{$('onboard').classList.add('hide');$('app').classList.remove('hide');$('tabbar').classList.remove('hide');}catch{}
+}
 
 /* ===== auto-update: reload when new SW activates ===== */
 if('serviceWorker'in navigator){
