@@ -299,10 +299,8 @@
   <!-- ONBOARDING -->
   <section id="onboard">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span></span>
-        <button class="btn ghost hide" id="obBack" style="padding:8px 14px">✕</button>
-      </div>
+      <button id="obBack" type="button" style="display:none;width:100%;margin-bottom:12px;font-family:inherit;font-size:14px;font-weight:700;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer"
+        onclick="document.getElementById('onboard').classList.add('hide');document.getElementById('app').classList.remove('hide');document.getElementById('tabbar').classList.remove('hide');window.scrollTo(0,0);">← Back to app / Quay lại</button>
       <div class="field"><span class="lab" data-i18n="sex">Giới tính</span>
         <div class="chips" data-set="sex"><button class="chip" data-v="male" data-i18n="male">Nam</button><button class="chip" data-v="female" data-i18n="female">Nữ</button></div></div>
       <div class="row3">
@@ -474,7 +472,7 @@ if(location.search.includes('purge')){
   })();
 }
 /* ===== storage ===== */
-const APP_VERSION='3.8';
+const APP_VERSION='3.9';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -710,11 +708,11 @@ function cleanupWeekSkips(){
   const mon=getWeekMon(0);const monKey=mon.toISOString().slice(0,10);
   if(lastClean!==monKey){weekSkips=new Set();saveSkips();displaced=[];saveDisplaced();makeupOn={};store.set('sp_makeupon','{}');makeupIdx=null;store.set('sp_skip_week',monKey);}}
 function fillOnboard(){if(!profile)return;
-  $('obBack').classList.remove('hide');// always allow closing when profile exists
-  $('i_age').value=profile.age;$('i_height').value=profile.height;$('i_weight').value=profile.weight;
-  const set=(n,v)=>{const box=document.querySelector(`[data-set="${n}"]`);if(box){box.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.v==String(v)));sel[n]=String(v);}};
-  set('sex',profile.sex);set('activity',profile.activity);set('goal',profile.goal);set('level',profile.level);set('days',profile.days);
-  sel.equip=new Set(profile.equip||[]);paintEquip();paintPreset();}
+  try{const ob=$('obBack');if(ob){ob.style.display='block';ob.classList.remove('hide');}}catch{}
+  try{$('i_age').value=profile.age;$('i_height').value=profile.height;$('i_weight').value=profile.weight;}catch{}
+  try{const set=(n,v)=>{const box=document.querySelector(`[data-set="${n}"]`);if(box){box.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.v==String(v)));sel[n]=String(v);}};
+    set('sex',profile.sex);set('activity',profile.activity);set('goal',profile.goal);set('level',profile.level);set('days',profile.days);}catch{}
+  try{sel.equip=new Set(profile.equip||[]);paintEquip();paintPreset();}catch{}}
 
 /* ===== start ===== */
 function startApp(){$('onboard').classList.add('hide');$('app').classList.remove('hide');$('tabbar').classList.remove('hide');
@@ -1346,7 +1344,7 @@ function go(page){document.querySelectorAll('.tabpage').forEach(p=>p.classList.t
 document.querySelectorAll('.tab').forEach(tb=>tb.addEventListener('click',()=>go(tb.dataset.go)));
 $('editProfile').addEventListener('click',openSettings);
 $('settingsBtn').addEventListener('click',openSettings);
-function openSettings(){fillOnboard();$('obBack').classList.remove('hide');$('app').classList.add('hide');$('tabbar').classList.add('hide');$('onboard').classList.remove('hide');window.scrollTo(0,0);}
+function openSettings(){fillOnboard();$('app').classList.add('hide');$('tabbar').classList.add('hide');$('onboard').classList.remove('hide');window.scrollTo(0,0);}
 $('obBack').addEventListener('click',()=>{$('onboard').classList.add('hide');$('app').classList.remove('hide');$('tabbar').classList.remove('hide');window.scrollTo(0,0);});
 
 /* ===== language toggle ===== */
