@@ -464,7 +464,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='3.5';
+const APP_VERSION='3.6';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -699,13 +699,17 @@ function cleanupWeekSkips(){
   const lastClean=store.get('sp_skip_week')||'';
   const mon=getWeekMon(0);const monKey=mon.toISOString().slice(0,10);
   if(lastClean!==monKey){weekSkips=new Set();saveSkips();displaced=[];saveDisplaced();makeupOn={};store.set('sp_makeupon','{}');makeupIdx=null;store.set('sp_skip_week',monKey);}}
-function fillOnboard(){if(!profile)return;$('i_age').value=profile.age;$('i_height').value=profile.height;$('i_weight').value=profile.weight;
+function fillOnboard(){if(!profile)return;
+  $('obBack').classList.remove('hide');// always allow closing when profile exists
+  $('i_age').value=profile.age;$('i_height').value=profile.height;$('i_weight').value=profile.weight;
   const set=(n,v)=>{const box=document.querySelector(`[data-set="${n}"]`);if(box){box.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.v==String(v)));sel[n]=String(v);}};
   set('sex',profile.sex);set('activity',profile.activity);set('goal',profile.goal);set('level',profile.level);set('days',profile.days);
   sel.equip=new Set(profile.equip||[]);paintEquip();paintPreset();}
 
 /* ===== start ===== */
-function startApp(){$('onboard').classList.add('hide');$('app').classList.remove('hide');$('tabbar').classList.remove('hide');renderAll();go('train');window.scrollTo(0,0);}
+function startApp(){$('onboard').classList.add('hide');$('app').classList.remove('hide');$('tabbar').classList.remove('hide');
+  try{renderAll();}catch(e){console.error('renderAll error:',e);}
+  go('train');window.scrollTo(0,0);}
 function renderAll(){renderSplitChips();renderDeload();renderWeek();renderNutrition();renderStats();renderHistory();}
 
 /* ===== program ===== */
@@ -1377,7 +1381,8 @@ function updatePersistUI(){const el=$('persistStat');if(!el)return;const msg=per
 load();applyStatic();showVer();checkPendingProfile();cleanupWeekSkips();
 requestPersist().then(p=>{persistGranted=p;updatePersistUI();});
 driveStartup();checkUpdate();
-if(profile){fillOnboard();startApp();}else{sel.equip=new Set(PRESETS.gym);paintEquip();paintPreset();}
+if(profile){fillOnboard();try{startApp();}catch(e){console.error('init error:',e);$('onboard').classList.add('hide');$('app').classList.remove('hide');$('tabbar').classList.remove('hide');}}
+else{$('obBack').classList.add('hide');sel.equip=new Set(PRESETS.gym);paintEquip();paintPreset();}
 
 /* ===== auto-update: reload when new SW activates ===== */
 if('serviceWorker'in navigator){
