@@ -464,7 +464,7 @@
 
 <script>
 /* ===== storage ===== */
-const APP_VERSION='3.4';
+const APP_VERSION='3.5';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
@@ -525,6 +525,7 @@ const L={
  applyCancel:{vi:'Hủy thay đổi',en:'Cancel changes'},
  swapDay:{vi:'Đổi ngày',en:'Swap day'},swapDayWith:{vi:'Đổi với ngày nào?',en:'Swap with which day?'},
  unskip:{vi:'Bỏ đánh dấu',en:'Unskip'},pickMakeupDay:{vi:'Chọn ngày tập bù',en:'Pick makeup day'},pickDayTitle:{vi:'Tập bù vào ngày nào?',en:'Make up on which day?'},dayHasWorkout:{vi:'(đã có lịch — sẽ đẩy tiếp)',en:'(has workout — will cascade)'},dayFree:{vi:'(trống)',en:'(free)'},
+ makeupTag:{vi:t('makeupTag'),en:'(makeup)'},makeupFocus:{vi:'tập bù',en:'makeup'},
  addEx:{vi:'+ Thêm bài',en:'+ Add exercise'},removeEx:{vi:'Bỏ bài',en:'Remove'},removeExAsk:{vi:'Bỏ bài này khỏi buổi tập?',en:'Remove this exercise?'},
  fuelTitle:{vi:'Dinh dưỡng',en:'Nutrition'},fuelSub:{vi:'Ước tính theo hồ sơ & mục tiêu',en:'Estimated from profile & goal'},perDay:{vi:'kcal / ngày',en:'kcal / day'},protein:{vi:'Đạm (Protein)',en:'Protein'},carb:{vi:'Tinh bột (Carb)',en:'Carbs'},fat:{vi:'Chất béo (Fat)',en:'Fat'},mealsTitle:{vi:'Gợi ý bữa ăn',en:'Meal suggestions'},
  nutNote:{vi:'Ước tính tham khảo (Mifflin-St Jeor), không phải lời khuyên y tế. Sau 2–3 tuần nếu cân nặng không đổi theo hướng mong muốn thì chỉnh ±200 kcal.',en:'Reference estimate (Mifflin-St Jeor), not medical advice. After 2–3 weeks, adjust by ±200 kcal if weight isn’t moving as intended.'},
@@ -802,8 +803,9 @@ function renderWeek(){
   const g=$('grid');g.innerHTML='';const wkDone=thisWeekDone();let nextFound=false;
   const today=(new Date().getDay()+6)%7;
   const missedDays=[];
-  pack.days.forEach((day,i)=>{if(day&&weekSkips.has(i)&&isCurrent)missedDays.push({idx:i,day,type:'skip'});});
-  if(isCurrent)displaced.forEach(d=>missedDays.push({idx:d.fromIdx,day:{key:d.key,name:d.name},type:'displaced',fromDay:d.fromDay}));
+  const scheduledRefs=new Set(Object.values(makeupOn||{}));
+  pack.days.forEach((day,i)=>{if(day&&weekSkips.has(i)&&isCurrent&&!scheduledRefs.has('s'+i))missedDays.push({idx:i,day,type:'skip'});});
+  if(isCurrent)displaced.forEach((d,di)=>{if(!scheduledRefs.has('d'+di))missedDays.push({idx:d.fromIdx,day:{key:d.key,name:d.name},type:'displaced',fromDay:d.fromDay,dIdx:di});});
   pack.days.forEach((day,i)=>{const card=document.createElement('div');card.className='day'+(day?'':' rest');
     if(!day){
       // scheduled makeup on this rest day?
@@ -822,8 +824,8 @@ function renderWeek(){
               <div class="suggest"><span>${t('nextUp')}</span> <b>${sg.txt}</b></div>
               <div class="sets">${setsHTML}</div>
               <div class="setfoot"><button class="minibtn" data-addset>${t('addSet')}</button><button class="minibtn" data-drop>${t('dropSet')}</button><button class="minibtn" data-rest="${restSec(ex.k)}">${restSec(ex.k)}s</button></div></div></div>`;});
-          card.innerHTML=`<div class="day-top"><div class="daynum" style="color:var(--blue)">+</div><div class="dmeta"><div class="dname">${sn} (tập bù)</div><div class="dfocus">${dayName(i)} · tập bù</div></div>
-            <button class="minibtn" data-cancelmakeup="${i}">✕</button></div>
+          card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--blue)">+</div><div class="dmeta"><div class="dname">${sn} ${t('makeupTag')}</div><div class="dfocus">${dayName(i)} · ${t('makeupFocus')}</div></div>
+            <div style="display:flex;gap:4px;align-items:center"><button class="minibtn" data-cancelmakeup="${i}">✕</button><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div></div>
             <div class="day-content">${rows3}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
           g.appendChild(card);return;}}
       // check if this rest day should offer displaced/skipped makeup
@@ -845,8 +847,8 @@ function renderWeek(){
                 <div class="suggest"><span>${t('nextUp')}</span> <b>${sg.txt}</b></div>
                 <div class="sets">${setsHTML}</div>
                 <div class="setfoot"><button class="minibtn" data-addset>${t('addSet')}</button><button class="minibtn" data-drop>${t('dropSet')}</button></div></div></div>`;});
-            const showName2=pack.days[makeupIdx]?pack.days[makeupIdx].name+' (tập bù)':'(tập bù)';
-            card.innerHTML=`<div class="day-top"><div class="daynum" style="color:var(--blue)">+</div><div class="dmeta"><div class="dname">${showName2}</div><div class="dfocus">${dayName(i)} · tập bù</div></div></div>
+            const showName2=pack.days[makeupIdx]?pack.days[makeupIdx].name+' '+t('makeupTag'):t('makeupTag');
+            card.innerHTML=`<div class="day-top" data-toggle><div class="daynum" style="color:var(--blue)">+</div><div class="dmeta"><div class="dname">${showName2}</div><div class="dfocus">${dayName(i)} · ${t('makeupFocus')}</div></div><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
               <div class="day-content">${rows2}<div class="dayfoot"><button class="btn finish" data-finish="${i}">${t('finishBtn')}</button></div></div>`;
             g.appendChild(card);return;}}
         card.innerHTML=`<div class="day-top"><div class="daynum">•</div><div class="dmeta"><div class="dname" style="color:var(--muted)">${dayName(i)}</div></div></div>${makeupBanner}`;
@@ -919,13 +921,13 @@ function renderWeek(){
       let makeupBanner='';
       if(missedDays.length&&makeupIdx==null){
         makeupBanner=missedDays.map((m,mi)=>{const label=m.type==='displaced'?t('skipAsk',m.day.name,m.fromDay):t('skipAsk',m.day.name,dayName(m.idx));
-          const mid=m.type==='skip'?m.idx:'d'+mi;
+          const mid=m.type==='skip'?m.idx:'d'+m.dIdx;
           return `<div class="makeup"><div class="mt">${label}</div>
-          <div class="mb"><button class="yes" data-makeup="${mid}">${t('skipYes')}</button><button class="no" data-pickday="${m.type==='skip'?'s'+m.idx:'d'+mi}">📅</button><button class="no" data-nomakeup>${t('skipNo')}</button></div></div>`;}).join('');}
-      const showName=schedName?schedName+' (tập bù)':(makeupIdx!=null?pack.days[makeupIdx].name+' (tập bù)':day.name);
+          <div class="mb"><button class="yes" data-makeup="${mid}">${t('skipYes')}</button><button class="no" data-pickday="${m.type==='skip'?'s'+m.idx:'d'+m.dIdx}">📅</button><button class="no" data-nomakeup>${t('skipNo')}</button></div></div>`;}).join('');}
+      const showName=schedName?schedName+' '+t('makeupTag'):(makeupIdx!=null?pack.days[makeupIdx].name+' '+t('makeupTag'):day.name);
       card.className='day';
-      card.innerHTML=`<div class="day-top"><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${showName}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div>
-        <div style="display:flex;gap:4px;align-items:center"><button class="minibtn" data-addex="${i}" title="${t('addEx')}">＋</button><button class="minibtn" data-swapday="${i}" title="${t('swapDay')}">↕</button><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div></div></div>
+      card.innerHTML=`<div class="day-top" data-toggle><div class="daynum">${i+1}</div><div class="dmeta"><div class="dname">${showName}</div><div class="dfocus">${dayName(i)} · ${focusName(day.focus)}</div></div>
+        <div style="display:flex;gap:4px;align-items:center"><button class="minibtn" data-addex="${i}" title="${t('addEx')}">＋</button><button class="minibtn" data-swapday="${i}" title="${t('swapDay')}">↕</button><div class="ring" data-ring="${i}"><b>0/${exs.length}</b></div>${chevronSVG}</div></div>
         ${makeupBanner}<div class="day-content">${rows}
           <div class="dayfoot" style="display:flex;gap:8px"><button class="btn finish" data-finish="${i}" style="flex:1">${t('finishBtn')}</button><button class="btn ghost" data-skip="${i}" style="flex:none;padding:14px 16px">${t('skipBtn')}</button></div></div>`;
     } else {
@@ -1067,7 +1069,7 @@ function finishSession(i){const pack=currentPack(),day=pack.days[i];
     else if(schedRef.startsWith('d')){const di2=+schedRef.slice(1);const dd=displaced[di2];if(dd){schedKey=dd.key;schedName=dd.name;}}}
   const useKey=schedKey||((makeupIdx!=null)?(pack.days[makeupIdx]?pack.days[makeupIdx].key:((displaced.find(d=>d.fromIdx===makeupIdx)||{}).key)):day?day.key:null);
   if(!useKey)return;
-  const useName=schedName?schedName+' (tập bù)':((makeupIdx!=null)?(pack.days[makeupIdx]?pack.days[makeupIdx].name:'')+' (tập bù)':day?day.name:'');
+  const useName=schedName?schedName+' '+t('makeupTag'):((makeupIdx!=null)?(pack.days[makeupIdx]?pack.days[makeupIdx].name:'')+' '+t('makeupTag'):day?day.name:'');
   const exs=genDay(useKey),items=[];let volume=0,setCount=0,newPRs=[];
   document.querySelectorAll(`.ex[data-d="${i}"]`).forEach(el=>captureSets(el));
   exs.forEach(ex=>{const st=setState[i+':'+ex.id];if(!st)return;
