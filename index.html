@@ -334,7 +334,8 @@
           <button class="chip" data-eq="bar" data-i18n="eqBar">Xà đơn</button><button class="chip" disabled aria-pressed="true" data-i18n2="eqBwAlways"></button></div></div>
       <button class="btn" id="genBtn" data-i18n="genBtn">Tạo giáo án của tôi →</button>
       <p class="note" id="obErr" style="color:var(--pink)"></p>
-      <button class="btn ghost" id="emergencyReset" style="width:100%;margin-top:20px;color:var(--pink);border-color:var(--pink)" onclick="if(confirm('Xóa toàn bộ dữ liệu app? / Clear all app data?')){try{localStorage.clear()}catch{}try{caches.keys().then(k=>k.forEach(n=>caches.delete(n)))}catch{}location.reload();}">⚠ Emergency Reset</button>
+      <button class="btn ghost" id="emergencyFix" style="width:100%;margin-top:20px" onclick="(async()=>{try{if('caches' in window){const ks=await caches.keys();for(const k of ks)await caches.delete(k);}}catch{}try{const rs=await navigator.serviceWorker.getRegistrations();for(const r of rs)await r.unregister();}catch{}location.reload();})();">🔧 Fix app (giữ dữ liệu / keep data)</button>
+      <button class="btn ghost" id="emergencyReset" style="width:100%;margin-top:8px;color:var(--pink);border-color:var(--pink)" onclick="if(confirm('⚠ Xóa TOÀN BỘ dữ liệu? Không khôi phục được!\n\nDelete ALL data? Cannot undo!')){try{localStorage.clear();}catch{}(async()=>{try{const ks=await caches.keys();for(const k of ks)await caches.delete(k);}catch{}try{const rs=await navigator.serviceWorker.getRegistrations();for(const r of rs)await r.unregister();}catch{}location.reload();})();}">⚠ Delete all data (xóa hết)</button>
     </div>
   </section>
 
@@ -464,8 +465,16 @@
 </div></div>
 
 <script>
+/* ===== purge recovery: add ?purge to URL to force-clear SW cache without losing data ===== */
+if(location.search.includes('purge')){
+  (async()=>{
+    try{if('caches' in window){const ks=await caches.keys();for(const k of ks)await caches.delete(k);}}catch{}
+    try{const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs)await r.unregister();}catch{}
+    location.replace(location.pathname);// reload without ?purge, clean
+  })();
+}
 /* ===== storage ===== */
-const APP_VERSION='3.7';
+const APP_VERSION='3.8';
 let cloudPush=null;
 const store={mem:{},get(k){try{const v=localStorage.getItem(k);return v??this.mem[k]??null}catch{return this.mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch{}this.mem[k]=v;if(cloudPush)cloudPush(k);}};
 
